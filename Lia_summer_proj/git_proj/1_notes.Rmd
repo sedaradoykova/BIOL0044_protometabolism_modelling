@@ -1,0 +1,1287 @@
+---
+title: "Modelling Carbon Fixation and G-encoded Amino Acids"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(GillespieSSA)
+```
+
+# Resources and things
+
+https://metacyc.org/ 
+
+# Preliminary Results 
+
+## G-encoded Amino Acids 
+
+A model was initially created for the synthesis of all G-encoded amino acids, namely glycine, glutamate, alanine, valine, and aspartate, which are produced the earliest in metabolism. The preceding pathways, carbon fixation and incomplete reductive TCA, were also included.
+
+While this initial model resulted in the synthesis of all amino acids, as shown in the figure below, alanine was produced at a concentration two orders of magnitude less than the other four amino acids. This was initially thought to be due to competition for glutamate, which is consumed as a reactant for alanine, valine, and aspartate synthesis. Replacing the glutamate requirement with one for NH~4~, NADP, and H^+^ resulted in increased synthesis of alanine, but synthesis of glycine and glutamate occurred one order of magnitude greater than the three other amino acids. 
+
+
+```{r g amino acids synthesis, include=FALSE}
+# rate equations for forward rxns 
+# rate constant assigned based on EC number 
+parms <- c(k1=2.53, k2= 2.53, k3=1, k4=1.86, k6=1.13) 
+
+nmol <- 5000
+# initial concentrations of reactants and products involved 
+# concentrations arbitrarily assigned 
+x0_full <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0, 
+        CO = 0, coA = nmol, acetyl_coA = 0, 
+        lipo_lys = nmol, dihyd_lys = nmol, NH4 = nmol, 
+        amino_dihyd = nmol, gly = 0, oxo_glut = nmol, 
+        glu = 0, pyruvate = nmol, ala = 0,
+        aceto_lac = nmol, dihyd_metbut = nmol, 
+        met_oxobut = nmol, val = 0, 
+        HCO3 = nmol, oxaloac = 0, malate = 0, 
+        fumarate = 0, menaquinol = nmol, 
+        succinate = 0, menaquinone = nmol, 
+        succ_coA = nmol, asp = 0)
+      
+a_full <- # carbon fixation 
+      c("k1*CO2*NADPH", 
+       "k6*tetrahyd*ATP*formate", 
+       "k3*Nformyl*H", 
+       "k1*methenyltet*NADPH", 
+       "k1*methylenetet*red_FeS^2*H^2",
+       "k1*methylenetet*NADH*H", 
+       "k1*methylenetet*ox_FeS^2*NADH^2",
+       "k2*CoI_FeS*methyltet*H",
+       "k1*CO2*red_FeS^2*H^2",
+       "k2*CO*metCoIII_FeS*coA", 
+       
+      # reductive glycine synthesis
+       "k1*lipo_lys*NADH*H",
+       "k2*dihyd_lys*methylenetet*NH4",
+       "k1*amino_dihyd*CO2",
+       
+      # glutamate synthesis 
+       "k1*oxo_glut*NH4*NADPH*H",
+       
+      # alanine synthesis 
+       "k2*glu*pyruvate",
+      
+      # aliphatic amino acid synthesis -> valine
+       "k2*pyruvate^2*H",
+       "k1*aceto_lac*NADPH*H",
+       "k4*dihyd_metbut",
+       "k2*glu*met_oxobut",
+       
+      # reductive incomplete TCA
+       "k1*acetyl_coA*CO2*red_FeS^2*H",
+       "k6*pyruvate*HCO3*ATP",
+       "k1*oxaloac*NADH*H",
+       "k4*malate",
+       "k1*fumarate*menaquinol",
+       "k6*succinate*ATP*coA",
+       "k1*succ_coA*CO2*red_FeS^2*H",
+      
+      # aspartate synthesis
+       "k2*oxaloac*glu")
+
+# state change matrix
+# stoichiometric ratios of reactants and products 
+# rows: reactants/products, columns: reactions
+mat_full <- read.csv("matrix_full.csv", header=T)
+mat_full <- as.matrix(mat_full[-1])
+
+
+out_full <- ssa(x0_full, a_full, mat_full, parms, tf=.0005)
+#ssa.plot(out_full, show.legend =T)
+
+data_full <- out_full[["data"]]
+cat("Chunk run")
+```
+
+```{r amino acid graphs, echo=FALSE, fig.height=6, warning=FALSE}
+par(mfrow = (c(3,2)))
+plot(data_full[,1], data_full[,29], main ="glycine", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_full[,1], data_full[,31], main ="glutamate", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_full[,1], data_full[,33], main ="alanine", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_full[,1], data_full[,37], main ="valine", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_full[,1], data_full[,46], main ="aspartate", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+```
+
+```{r glu to nh4, include=FALSE}
+# rate equations for forward rxns 
+# rate constant assigned based on EC number 
+parms <- c(k1=2.53, k2= 2.53, k3=1, k4=1.86, k6=1.13) 
+
+nmol <- 5000
+# initial concentrations of reactants and products involved 
+# concentrations arbitrarily assigned 
+x0_full <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0, 
+        CO = 0, coA = nmol, acetyl_coA = 0, 
+        lipo_lys = nmol, dihyd_lys = nmol, NH4 = nmol, 
+        amino_dihyd = nmol, gly = 0, oxo_glut = nmol, 
+        glu = 0, pyruvate = nmol, ala = 0,
+        aceto_lac = nmol, dihyd_metbut = nmol, 
+        met_oxobut = nmol, val = 0, 
+        HCO3 = nmol, oxaloac = 0, malate = 0, 
+        fumarate = 0, menaquinol = nmol, 
+        succinate = 0, menaquinone = nmol, 
+        succ_coA = nmol, asp = 0)
+      
+a_nh4 <- # carbon fixation 
+      c("k1*CO2*NADPH", 
+       "k6*tetrahyd*ATP*formate", 
+       "k3*Nformyl*H", 
+       "k1*methenyltet*NADPH", 
+       "k1*methylenetet*red_FeS^2*H^2",
+       "k1*methylenetet*NADH*H", 
+       "k1*methylenetet*ox_FeS^2*NADH^2",
+       "k2*CoI_FeS*methyltet*H",
+       "k1*CO2*red_FeS^2*H^2",
+       "k2*CO*metCoIII_FeS*coA", 
+       
+      # reductive glycine synthesis
+       "k1*lipo_lys*NADH*H",
+       "k2*dihyd_lys*methylenetet*NH4",
+       "k1*amino_dihyd*CO2",
+       
+      # glutamate synthesis 
+       "k1*oxo_glut*NH4*NADPH*H",
+       
+      # alanine synthesis 
+       "k2*NH4*NADP*H*pyruvate",
+      
+      # aliphatic amino acid synthesis -> valine
+       "k2*pyruvate^2*H",
+       "k1*aceto_lac*NADPH*H",
+       "k4*dihyd_metbut",
+       "k2*NH4*NADP*H*met_oxobut",
+       
+      # reductive incomplete TCA
+       "k1*acetyl_coA*CO2*red_FeS^2*H",
+       "k6*pyruvate*HCO3*ATP",
+       "k1*oxaloac*NADH*H",
+       "k4*malate",
+       "k1*fumarate*menaquinol",
+       "k6*succinate*ATP*coA",
+       "k1*succ_coA*CO2*red_FeS^2*H",
+      
+      # aspartate synthesis
+       "k2*oxaloac*NH4*NADP*H")
+
+# state change matrix
+# stoichiometric ratios of reactants and products 
+# rows: reactants/products, columns: reactions
+mat_nh4 <- read.csv("matrix_nh4.csv", header=T)
+mat_nh4 <- as.matrix(mat_nh4[-1])
+
+
+out_nh4 <- ssa(x0_full, a_nh4, mat_nh4, parms, tf=.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_nh4 <- out_nh4[["data"]]
+cat("Chunk run")
+```
+
+```{r amino acid graphs no glut, fig.height=6, echo=FALSE, warning=FALSE, include = T}
+par(mfrow = (c(3,2)))
+
+plot(data_nh4[,1], data_nh4[,29], main ="glycine", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_nh4[,1], data_nh4[,31], main ="glutamate", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_nh4[,1], data_nh4[,33], main ="alanine", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_nh4[,1], data_nh4[,37], main ="valine", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_nh4[,1], data_nh4[,46], main ="aspartate", pch=20, cex=0.3,
+     xlab ="Time", ylab="Concentration")
+```
+
+## Modeling carbon fixation and glycine synthesis 
+
+Given this, the initial model was reduced to only include carbon fixation, the earliest pathway in autotrophic metabolism, and glycine synthesis, which immediately follows it. This was done to inspect if earlier intermediates were being produced and consumed consistently with the reactions considered. 
+
+The Ljungdahl-Wood pathway was used to model carbon fixation. This pathway occurs in autotrophs, and is best understood in homoacetogenic bacteria, to result in the production of acetyl-coA from two molecules of CO~2~. Understanding the carbon fixation pathway is key to modelling prebiotic metabolism, as carbon fixation allows for the establishment of autotrophic growth and development by reducing dependence on organic material for energy. 
+
+```{r pressure, echo=FALSE, fig.cap="Carbon Fixation Pathway`", out.width = '70%'}
+#knitr::include_graphics("co2_fixation_pathway.png") ## pgn not available
+```
+
+
+```{r to glycine, warning=FALSE, echo=FALSE}
+parms <- c(k1=2.53, k2= 2.53, k3=1, k4=1.86, k6=1.13) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x0_gly <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0,
+        lipo_lys = nmol, dihyd_lys = nmol, NH4 = nmol, 
+        amino_dihyd = nmol, gly = 0)
+      
+a_gly <- # carbon fixation 
+     c("k1*CO2*NADPH", 
+      "k6*tetrahyd*ATP*formate", 
+      "k3*Nformyl*H", 
+      "k1*methenyltet*NADPH", 
+      "k1*methylenetet*NADH*H", 
+      "k2*CoI_FeS*methyltet*H",
+      "k1*CO2*red_FeS^2*H^2",
+      "k2*CO*metCoIII_FeS*coA",
+       
+      # reductive glycine synthesis
+       "k1*lipo_lys*NADH*H",
+       "k2*dihyd_lys*methylenetet*NH4",
+       "k1*amino_dihyd*CO2")
+
+# state change matrix
+mat_gly <- read.csv("to_glycine.csv", header=T)
+mat_gly <- as.matrix(mat_gly[-1])
+
+
+out_gly <- ssa(x0_gly, a_gly, mat_gly, parms, tf=.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_gly <- out_gly[["data"]]
+cat("Chunk run")
+```
+
+```{r gly graphs 1, warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,3)))
+
+plot(data_gly[,1], data_gly[,29], main ="glycine", pch=20, col ="blue", cex=0.3,
+     xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,2], main ="CO2", pch=20, cex=0.3, xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,4], main ="formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration") 
+plot(data_gly[,1], data_gly[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,24], main ="acetyl coA", pch=20, col ="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+``` {r gly graphs 2, warning=FALSE, echo=FALSE, include = T}
+par(mfrow = (c(2,4)))
+
+plot(data_gly[,1], data_gly[,3], main ="NADPH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_gly[,1], data_gly[,5], main ="NADP+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,6], main ="tetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,7], main ="ATP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,8], main ="N10-formyltetrahydrofolate", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,9], main ="ADP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,10], main ="P", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,11], main ="H+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,12], main ="5,10-methenyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+
+plot(data_gly[,1], data_gly[,13], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,14], main ="5,10-methylenetetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,15], main ="reduced FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,16], main ="5,10-methyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,17], main ="oxidized FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,18], main ="NADH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,19], main ="NAD+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,20], main ="corrinoid (I) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_gly[,1], data_gly[,21], main ="methyl corrinoid (III) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_gly[,1], data_gly[,23], main ="coA", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+As seen in the figure above, this resulted in low levels of glycine synthesis, lower than in the earlier model which included all the amino acids. Acetyl-coA was not produced at the end of carbon fixation. Most earlier intermediates were also not produced, or produced only at low concentrations, except for carbon monoxide. In order to best explore the reasons behind this, the individual reactions in the carbon fixation pathway were further analyzed.
+
+## Carbon fixation
+
+As shown in Figure 1, CO~2~ is used in two parallel branches for carbon fixation. The first involves six steps from the conversion of CO~2~ to methyl corrinoid (III) FeS clusters. The second involves a single step converting CO~2~ to CO. Methyl corrinoid (III) FeS and CO are then used as inputs in the final step of CO~2~ fixation, acetyl coA synthesis. The first model showed high levels of CO synthesis. However, methyl corrinoid (III) FeS was not produced. The tetrahydrofolates that are meant to be produced in preceding steps were also not synthesized, with the exception of N10-tetrahydrofolate, which is the earliest one produced in this pathway. 
+
+This may be explained by competition for reactants either between the two parallel pathways, or within the pathway for methyl corrinoid (III) FeS synthesis. NADPH is consumed when CO~2~ is used for formate synthesis, and again later on for the synthesis of 5,10-methylenetetrahydrofolate from 5,10-methyltetrahydrofolate. Formate is produced in oscillating concentrations and used in the synthesis of N10-tetrahydrofolate, which unlike 5,10-methylenetetrahydrofolate is successfully produced in this model. As such, NADPH may be consumed early in the pathway and depleted before 5,10-methyltetrahydrofolate can be produced. Alternatively, CO production from CO~2~ involves only one step, which is a fifth order reaction and thus relatively rapid compared to formate synthesis that is only second order. CO~2~ may be consumed more rapidly in CO synthesis than in the multi-step pathway to methyl corrinoid (III) FeS production, resulting in the high levels of CO produced in the model. 
+
+To test these hypotheses, a model was created including only the reactions for carbon fixation, introducing a few modifications. 
+
+
+### Removing the requirement for NADPH in formate synthesis
+
+``` {r carbon fixation no early nadph, warning=FALSE, echo=FALSE}
+parms <- c(k1=2.53, k2= 2.53, k3=1, k4=1.86, k6=1.13) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x_co_fix <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0)
+
+a_co_fix_1 <- # carbon fixation 
+  c("k1*CO2", 
+    "k6*tetrahyd*ATP*formate", 
+    "k3*Nformyl*H", 
+    "k1*methenyltet*NADPH", 
+    "k1*methylenetet*NADH*H", 
+    "k2*CoI_FeS*methyltet*H",
+    "k1*CO2*red_FeS^2*H^2",
+    "k2*CO*metCoIII_FeS*coA")
+
+# state change matrix
+mat_co_fix_1 <- read.csv("no_nadph.csv", header=F)
+mat_co_fix_1 <- as.matrix(mat_co_fix_1[-1])
+
+
+out_co_fix_1 <- ssa(x_co_fix, a_co_fix_1, mat_co_fix_1, parms, tf=.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_1 <- out_co_fix_1[["data"]]
+cat("Chunk run")
+```
+
+```{r co fixation graphs no early nadph 1,fig.height=6, warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,2)))
+
+plot(data_co_fix_1[,1], data_co_fix_1[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,4], main ="formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,24], main ="acetyl coA", pch=20, col ="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+In the figure above, the NADPH requirement was removed from formate synthesis, such that NADPH was only consumed for the production of 5,10-methylenetetrahydrofolate. However, while no NADPH depletion was seen in the model and acetyl-coA was not produced, CO~2~ was still rapidly consumed. This suggests that the pathway for methyl corrinoid (III) FeS synthesis was not occurring, and that the CO~2~ was funneled into CO synthesis. The internal competition for NADPH amongst tetrahydrofolate intermediates must not be a strong rate-limiting step. 
+
+```{r co fixation no early nadph 2, include = T}
+par(mfrow = (c(2,4)))
+
+plot(data_co_fix_1[,1], data_co_fix_1[,3], main ="NADPH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,5], main ="NADP+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,6], main ="tetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,7], main ="ATP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,8], main ="N10-formyltetrahydrofolate", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,9], main ="ADP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,10], main ="P", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,11], main ="H+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,12], main ="5,10-methenyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_1[,1], data_co_fix_1[,13], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,14], main ="5,10-methylenetetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,15], main ="reduced FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,16], main ="5,10-methyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,17], main ="oxidized FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,18], main ="NADH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,19], main ="NAD+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,20], main ="corrinoid (I) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,21], main ="methyl corrinoid (III) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_1[,1], data_co_fix_1[,23], main ="coA", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+### Decreasing the rate of reaction for CO synthesis 
+
+``` {r carbon fixation CO slow, warning=FALSE, echo=FALSE}
+parms <- c(k1=2.53, k2= 2.53, k3=1, k4=1.86, k6=1.13) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x_co_fix <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0)
+
+a_co_fix_2 <- # carbon fixation 
+  c("k1*CO2*NADPH", 
+    "k6*tetrahyd*ATP*formate", 
+    "k3*Nformyl*H", 
+    "k1*methenyltet*NADPH", 
+    "k1*methylenetet*NADH*H", 
+    "k2*CoI_FeS*methyltet*H",
+    "k1*1e-10*CO2*red_FeS^2*H^2",
+    "k2*CO*metCoIII_FeS*coA")
+
+# state change matrix
+mat_co_fix_2 <- read.csv("co_fix_fwd.csv", header=F)
+mat_co_fix_2 <- as.matrix(mat_co_fix_2[-1])
+
+
+out_co_fix_2 <- ssa(x_co_fix, a_co_fix_2, mat_co_fix_2, parms, tf=.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_2 <- out_co_fix_2[["data"]]
+cat("Chunk run")
+```
+
+```{r co fixation graphs co slow 1,fig.height=6, warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,2)))
+
+plot(data_co_fix_2[,1], data_co_fix_2[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,4], main ="formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,24], main ="acetyl coA", pch=20, col ="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+The figure above shows the results of a model where the rate of CO synthesis is decreased by a factor of 10^10^. Production of all the tetrahydrofolate intermediates occurred, although at a lower level for intermediates synthesized later in the pathway. CO and low levels of methyl corrinoid (III) FeS were both synthesized, which reacted to produce acetyl coA. This suggests that CO synthesis is likely the limiting step for this pathway. These results are seen when CO synthesis is decreased by at least a factor of 10^3^.
+
+Making CO synthesis second order like formate synthesis, as opposed to the original fifth order, also generates the same results. This indicates that when CO and formate synthesis reactions compete for CO~2~ at the same rate, carbon fixation proceeds to completion. Competition for CO~2~ between the parallel pathways is thus rate-limiting. 
+
+In subsequent models, the reactions were set to first order with respect to each species. This is due to the lack of kinetic data which can inform us about appropriate rate orders.
+
+``` {r co fixation graphs co slow 2, include = T}
+par(mfrow = (c(2,4)))
+
+plot(data_co_fix_2[,1], data_co_fix_2[,3], main ="NADPH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,5], main ="NADP+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,6], main ="tetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,7], main ="ATP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,8], main ="N10-formyltetrahydrofolate", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,9], main ="ADP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,10], main ="P", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,11], main ="H+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,12], main ="5,10-methenyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_2[,1], data_co_fix_2[,13], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,14], main ="5,10-methylenetetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,15], main ="reduced FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,16], main ="5,10-methyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,17], main ="oxidized FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,18], main ="NADH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,19], main ="NAD+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,20], main ="corrinoid (I) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,21], main ="methyl corrinoid (III) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_2[,1], data_co_fix_2[,23], main ="coA", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+### Increasing the initial H^+^ concentration
+
+``` {r carbon fixation more H+, warning=FALSE, echo=FALSE}
+parms <- c(k1=2.53, k2= 2.53, k3=1, k4=1.86, k6=1.13) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x_co_fix_h <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol*3, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0)
+
+a_co_fix <- # carbon fixation 
+  c("k1*CO2*NADPH", 
+    "k6*tetrahyd*ATP*formate", 
+    "k3*Nformyl*H", 
+    "k1*methenyltet*NADPH", 
+    "k1*methylenetet*NADH*H", 
+    "k2*CoI_FeS*methyltet*H",
+    "k1*CO2*red_FeS*H",
+    "k2*CO*metCoIII_FeS*coA")
+
+# state change matrix
+mat_co_fix_3 <- read.csv("co_fix_fwd.csv", header=F)
+mat_co_fix_3 <- as.matrix(mat_co_fix_3[-1])
+
+
+out_co_fix_3 <- ssa(x_co_fix_h, a_co_fix, mat_co_fix_3, parms, tf=.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_3 <- out_co_fix_3[["data"]]
+cat("Chunk run")
+```
+
+```{r co fixation graphs more H+ 1,fig.height=6, warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,2)))
+
+plot(data_co_fix_3[,1], data_co_fix_3[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,4], main ="formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,24], main ="acetyl coA", pch=20, col ="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+In the figure above, the initial H^+^ concentration was increased by a factor of 3. This similarly results in the synthesis of CO, all tetrahydrofolate intermediates, and acetyl coA. This may be because both CO synthesis and many of the steps to methyl corrinoid (III) FeS production involve redox reactions, but most of the available protons are consumed for the faster reaction, CO synthesis. Increasing H^+^ concentration prevents inhibition of the pathway by H^+^ depletion, allowing methyl corrinoid (III) FeS synthesis to proceed. 
+
+``` {r co fixation graphs more H+ 2, include = T}
+par(mfrow = (c(2,4)))
+
+plot(data_co_fix_3[,1], data_co_fix_3[,3], main ="NADPH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,5], main ="NADP+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,6], main ="tetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,7], main ="ATP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,8], main ="N10-formyltetrahydrofolate", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,9], main ="ADP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,10], main ="P", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,11], main ="H+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,12], main ="5,10-methenyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_3[,1], data_co_fix_3[,13], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,14], main ="5,10-methylenetetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,15], main ="reduced FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,16], main ="5,10-methyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,17], main ="oxidized FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,18], main ="NADH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,19], main ="NAD+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,20], main ="corrinoid (I) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,21], main ="methyl corrinoid (III) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_3[,1], data_co_fix_3[,23], main ="coA", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+### Regenerating reducing agents
+
+The competition for reagents and reducing agents suggests that a model with only forward reactions, unable to regenerate the reactants consumed, will inhibit itself over time. Reducing agents will be regenerated after they are oxidized if they are able to react with hydrogen in the environment. The introduction of reactions for NADPH, NADP, and reduced FeS cluster synthesis is modeled below. 
+
+``` {r carbon fixation regenerate reducing agents, warning=FALSE, echo=FALSE}
+parms <- c(k1=2.53, k2= 2.53, k3=1, k4=1.86, k6=1.13) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x_co_fix_red <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0, H2 = nmol)
+
+a_co_fix_red <- # carbon fixation 
+  c("k1*CO2*NADPH", 
+    "k6*tetrahyd*ATP*formate", 
+    "k3*Nformyl*H", 
+    "k1*methenyltet*NADPH", 
+    "k1*methylenetet*NADH*H", 
+    "k2*CoI_FeS*methyltet*H",
+    "k1*CO2*red_FeS*H",
+    "k2*CO*metCoIII_FeS*coA", 
+    "0.5*NADP*H2",
+    "0.5*NAD*H2",
+    "0.5*ox_FeS^2*H2")
+
+# state change matrix
+mat_co_fix_4 <- read.csv("co_fix_red_agent.csv", header=T)
+mat_co_fix_4 <- as.matrix(mat_co_fix_4[-1])
+
+
+out_co_fix_4 <- ssa(x_co_fix_red, a_co_fix_red, mat_co_fix_4, parms, tf=1e-6)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_4 <- out_co_fix_4[["data"]]
+cat("Chunk run")
+```
+
+```{r co fixation graphs red agents 1, fig.height=6,warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,4)))
+
+plot(data_co_fix_4[,1], data_co_fix_4[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,4], main ="formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,24], main ="acetyl coA", pch=20, col ="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,25], main ="H2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,3], main ="NADPH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,18], main ="NADH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,15], main ="reduced FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+Reduced FeS clusters were generated, although acetyl coA, NADPH, and NADP were not. This may be because the CO synthesis pathway still occurs at a greater rate, such that most of the available hydrogen is being used to regenerate only the reduced FeS clusters that are consumed in CO synthesis. Reduced FeS cluster synthesis is also third order, while NADPH and NADH are only second order overall, which means it is occurring at a faster rate and able to sequester more hydrogen than the other two regenerative steps.  
+
+``` {r co fixation graphs red agents 2, include=T}
+par(mfrow = (c(2,4)))
+
+plot(data_co_fix_4[,1], data_co_fix_4[,5], main ="NADP+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,6], main ="tetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,7], main ="ATP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,8], main ="N10-formyltetrahydrofolate", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,9], main ="ADP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,10], main ="P", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,11], main ="H+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,12], main ="5,10-methenyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,13], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,14], main ="5,10-methylenetetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_4[,1], data_co_fix_4[,16], main ="5,10-methyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,17], main ="oxidized FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_4[,1], data_co_fix_4[,19], main ="NAD+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,20], main ="corrinoid (I) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_4[,1], data_co_fix_4[,21], main ="methyl corrinoid (III) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_4[,1], data_co_fix_4[,23], main ="coA", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+### Changing the rate constants
+
+Rate constants were obtained for every reaction in the pathway based on the reported k~cat~ of each, although values were only available for enzyme-catalyzed reactions based on experimental models in physiological conditions. k~cat~ values were chosen from enzymes found in bacteria or archaea, for reactions going in the direction that they occur in metabolism. These k~cat~ values are listed in Table 1 below, with reactions listed in the order they appear in Figure 1. 
+
+
+Table 1. Enzymes in Carbon Fixation and Corresponding K~cat~ (s^-1^) 
+
+Reaction  | K~cat~ (s^-1^) | Enzyme
+------------- | ------------- | -------------
+1 | 10 | formate dehydrogenase
+2 | 4.4 | formyltetrahydrofolate ligase 
+3 | 16 | bacterial methenyltetrahydrofolate cyclohydrolase 
+4 | 19.9 | methylenetetrahydrofolate dehydrogenase
+5 | 23.5 | methylenetetrahydrofolate reductase
+6 | 108 | 5-methyltetrahydrofolate: corrinoid/ FeS protein Co-methyltransferase
+7 | 0.869 | CO dehydrogenase/acetyl-CoA synthase
+8 | 0.061 | CO dehydrogenase/acetyl-CoA synthase
+These values were then supplied as initial parameters in the model for carbon fixation, and the results of this are shown below. 
+
+``` {r carbon fixation rate constants, warning=FALSE, echo=FALSE}
+parms_k <- c(k_1 = 10, k_2 = 4.4, k_3 = 16, k_4 = 19.9, 
+           k_5 = 23.5, k_6 = 108, k_7 = 0.869, k_8 = 0.061) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x_co_fix_k <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0)
+
+a_co_fix_k <- # carbon fixation 
+  c("k_1*CO2*NADPH", 
+    "k_2*tetrahyd*ATP*formate", 
+    "k_3*Nformyl*H", 
+    "k_4*methenyltet*NADPH", 
+    "k_5*methylenetet*NADH*H", 
+    "k_6*CoI_FeS*methyltet*H",
+    "k_7*CO2*red_FeS*H",
+    "k_8*CO*metCoIII_FeS*coA")
+
+# state change matrix
+mat_co_fix_5 <- read.csv("co_fix_fwd.csv", header=F)
+mat_co_fix_5 <- as.matrix(mat_co_fix_5[-1])
+
+
+out_co_fix_5 <- ssa(x_co_fix_k, a_co_fix_k, mat_co_fix_5, parms_k, tf=0.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_5 <- out_co_fix_5[["data"]]
+cat("Chunk run")
+```
+
+```{r co fixation graphs change rate constants 1, fig.height=5,warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,2)))
+
+plot(data_co_fix_5[,1], data_co_fix_5[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,4], main ="formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,24], main ="acetyl coA", pch=20, col ="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+Low levels of acetyl-coA synthesis occurred, which was not detected in the unmodified model. CO was still successfully being produced at high concentrations. Formate and proceeding tetrahydrofolate intermediates were synthesized successfully, although only in very low or oscillating concentrations. Formate synthesis has a k~cat~ two orders of magnitude greater than that of CO synthesis in physiological conditions, thus allowing for the methyl corrinoid (III) FeS synthesis pathway to proceed despite the problems described earlier. 
+
+``` {r co fixation graphs change rate constants 2, include=T}
+par (mfrow = c(2,4))
+plot(data_co_fix_5[,1], data_co_fix_5[,5], main ="NADP+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,6], main ="tetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,7], main ="ATP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,8], main ="N10-formyltetrahydrofolate", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,9], main ="ADP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,10], main ="P", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,11], main ="H+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,12], main ="5,10-methenyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+par (mfrow = c(2,4))
+plot(data_co_fix_5[,1], data_co_fix_5[,13], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,14], main ="5,10-methylenetetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_5[,1], data_co_fix_5[,16], main ="5,10-methyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,17], main ="oxidized FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_5[,1], data_co_fix_5[,19], main ="NAD+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,20], main ="corrinoid (I) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_5[,1], data_co_fix_5[,21], main ="methyl corrinoid (III) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_5[,1], data_co_fix_5[,23], main ="coA", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+### Combined model 
+
+A model was then created with these rate constants from literature, an excess of H^+^ to simulate a reducing environment, and reactions for the regeneration of reducing agents. The regenerative reactions were given a reaction rate one order of magnitude less than the slowest forward reaction, CO synthesis. The reaction for reduced FeS synthesis was also made first order with respect to oxidized FeS and thus second order overall. The results of this as shown below. 
+
+``` {r carbon fixation combined model, warning=FALSE, echo=FALSE}
+parms_k <- c(k_1 = 10, k_2 = 4.4, k_3 = 16, k_4 = 19.9, 
+           k_5 = 23.5, k_6 = 108, k_7 = 0.869, k_8 = 0.061) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x_co_fix_comb<- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol*3, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0, H2 = nmol)
+
+a_co_fix_comb <- # carbon fixation 
+  c("k_1*CO2*NADPH", 
+    "k_2*tetrahyd*ATP*formate", 
+    "k_3*Nformyl*H", 
+    "k_4*methenyltet*NADPH", 
+    "k_5*methylenetet*NADH*H", 
+    "k_6*CoI_FeS*methyltet*H",
+    "k_7*CO2*red_FeS*H",
+    "k_8*CO*metCoIII_FeS*coA",
+    "0.01*NADP*H2",
+    "0.01*NAD*H2",
+    "0.01*ox_FeS*H2")
+
+# state change matrix
+mat_co_fix_4 <- read.csv("co_fix_red_agent.csv", header=T)
+mat_co_fix_4 <- as.matrix(mat_co_fix_4[-1])
+
+
+out_co_fix_comb <- ssa(x_co_fix_comb, a_co_fix_comb, mat_co_fix_4, parms_k, tf=0.005)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_comb <- out_co_fix_comb[["data"]]
+cat("Chunk run")
+```
+
+```{r co fixation graphs combined model 1, fig.height=5.5,warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,4)))
+
+plot(data_co_fix_comb[,1], data_co_fix_comb[,2], main = "CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,4], main = "formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,24], main = "acetyl coA", pch=20, col="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_comb[,1], data_co_fix_comb[,25], main ="H2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,3], main ="NADPH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,18], main ="NADH", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,15], main ="reduced FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+Acetyl-coA, formate, and CO were all produced. The tetrahydrofolate intermediates were also synthesized, alongside all the reducing agents, although reduced FeS clusters were still regenerated at a faster rate than NADPH and NADH. 
+
+While the modifications introduced resulted in the successful synthesis of the expected products of carbon fixation, other conditions and rates of reactions may still be explored. An excess H^+^ gradient may not be the only condition for successful acetyl-coA synthesis. Future models will simulate a more realistic version of the protocell by using different initial concentrations for the reactants and modelling within the estimated volume of a protocell. 
+
+``` {r co fixation graphs combined model 2, include=T}
+par(mfrow = (c(2,4)))
+
+plot(data_co_fix_comb[,1], data_co_fix_comb[,5], main ="NADP+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,6], main ="tetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,7], main ="ATP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,8], main ="N10-formyltetrahydrofolate", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,9], main ="ADP", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,10], main ="P", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,11], main ="H+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,12], main ="5,10-methenyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,13], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,14], main ="5,10-methylenetetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_comb[,1], data_co_fix_comb[,16], main ="5,10-methyltetrahydrofolate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,17], main ="oxidized FeS cluster", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_comb[,1], data_co_fix_comb[,19], main ="NAD+", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,20], main ="corrinoid (I) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_comb[,1], data_co_fix_comb[,21], main ="methyl corrinoid (III) FeS", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+plot(data_co_fix_4[,1], data_co_fix_4[,23], main ="coA", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+``` {r carbon fixation volume, warning=FALSE, echo=FALSE}
+parms_k <- c(k_1 = 10, k_2 = 4.4, k_3 = 16, k_4 = 19.9, 
+           k_5 = 23.5, k_6 = 108, k_7 = 0.869, k_8 = 0.061) 
+
+nmol <- 5000
+vol <- 65
+
+# initial concentrations of reactants and products involved 
+x_co_fix_comb <- c(CO2 = nmol, NADPH = nmol, formate = 0, NADP = 0,
+        tetrahyd = nmol, ATP = nmol, Nformyl = 0, ADP = 0, P = 0, 
+        H = nmol*3, methenyltet = 0, H2O = nmol, 
+        methylenetet = 0, red_FeS = nmol, methyltet = 0, ox_FeS = nmol,
+        NADH = nmol, NAD = 0, CoI_FeS = nmol, metCoIII_FeS = 0,
+        CO = 0, coA = nmol, acetyl_coA = 0, H2 = nmol)
+
+x_co_fix_vol <- x_co_fix_comb/vol
+
+a_co_fix_comb <- # carbon fixation 
+  c("k_1*CO2*NADPH", 
+    "k_2*tetrahyd*ATP*formate", 
+    "k_3*Nformyl*H", 
+    "k_4*methenyltet*NADPH", 
+    "k_5*methylenetet*NADH*H", 
+    "k_6*CoI_FeS*methyltet*H",
+    "k_7*CO2*red_FeS*H",
+    "k_8*CO*metCoIII_FeS*coA",
+    "0.01*NADP*H2",
+    "0.01*NAD*H2",
+    "0.01*ox_FeS*H2")
+
+# state change matrix
+mat_co_fix_vol <- read.csv("co_fix_red_agent.csv", header=T)
+mat_co_fix_vol <- as.matrix(mat_co_fix_vol[-1])
+
+
+out_co_fix_vol <- ssa(x_co_fix_vol, a_co_fix_comb, mat_co_fix_vol, parms_k, tf=0.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_vol <- out_co_fix_vol[["data"]]
+cat("Chunk run")
+```
+
+```{r co fixation graphs vol, fig.height=6, include = T, warning=FALSE, echo=FALSE}
+par(mfrow = (c(2,2)))
+
+plot(data_co_fix_vol[,1], data_co_fix_vol[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_vol[,1], data_co_fix_vol[,4], main ="formate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_vol[,1], data_co_fix_vol[,22], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_vol[,1], data_co_fix_vol[,24], main ="acetyl coA", pch=20, col ="red", cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+### Removing cofactors
+
+A simpler model was created without the need for cofactors, including all tetrahydrofolate intermediates. As such, different products were formed, and the results of this are seen below. CO~2~ is fixed to acetic acid. CO synthesis is less kinetically favorable, with a significantly lower rate constant, than methanol synthesis and all preceding steps. More methanol than CO is produced, in contrast to earlier models where CO synthesis was high. 
+
+``` {r carbon fixation new, warning=FALSE, echo=FALSE}
+parms_k <- c(k_1 = 10, k_2 = 19.9, k_3 = 23.5, k_4 = 0.869, 
+           k_5 = 0.061) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x_co_fix_new <- c(CO2 = nmol, H2 = nmol, formic_acid = 0,
+        formaldehyde = 0, methanol = 0, CO = 0, acetic_acid = 0, H2O = 0) 
+
+# a_co_fix_new <- # carbon fixation 
+  # c("k_1*CO2*H2", 
+   #  "k_2*formic_acid*H2", 
+    # "k_3*formaldehyde*H2", 
+    # "k_4*methanol*CO", 
+    # "k_5*CO2*H2",
+    # "20*formic_acid")
+
+a_co_fix_new <- # carbon fixation 
+  c("CO2*H2", 
+    "formic_acid*H2", 
+    "formaldehyde*H2", 
+    "methanol*CO", 
+    "CO2*H2",
+    "formic_acid")
+
+# state change matrix
+mat_co_fix_new <- read.csv("no_cofactors.csv", header=F)
+mat_co_fix_new <- as.matrix(mat_co_fix_new[-1])
+
+
+out_co_fix_new <- ssa(x_co_fix_new, a_co_fix_new, mat_co_fix_new, parms_k, tf=0.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_co_fix_new <- out_co_fix_new[["data"]]
+cat("Chunk run")
+```
+
+``` {r co fixation graphs new, fig.height = 6, echo=FALSE}
+par(mfrow = (c(3,3)))
+
+plot(data_co_fix_new[,1], data_co_fix_new[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_new[,1], data_co_fix_new[,3], main ="H2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_new[,1], data_co_fix_new[,4], main ="formic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_new[,1], data_co_fix_new[,5], main ="formaldehyde", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_co_fix_new[,1], data_co_fix_new[,6], main ="methanol", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_new[,1], data_co_fix_new[,7], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_new[,1], data_co_fix_new[,8], main ="acetic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_co_fix_new[,1], data_co_fix_new[,9], main ="H2O", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
+
+### First five amino acids with no cofactors
+
+``` {r no co factors 5 aa, echo = F}
+parms_k_nocof <- c(k_1_1 = 12.9, k_1_2 = 69.8, k_2_0 = 0.061, k_3_1 = 3.2, 
+                   k_3_2 = 6.5, k_4_0 = 60, k_5_0 = 5.8, k_re=100) 
+
+parms_k_nocof <- c(k_1_1 = 1e4, k_1_2 = 1e5, k_2_0 = 1e4, k_3_1 = 10, k_3_2 = 1e7, 
+                   k_4_0 = 1, k_5_0 = 1e11, k_re=100) 
+
+nmol <- 5000
+
+# initial concentrations of reactants and products involved 
+x0_no_cof <- c(CO2 = 3*nmol, H2 = 5*nmol, CO = 0, H2O = 0, formic = 0, 
+               formaldehyde = 0, methanol = 0, acetic = 0, pyruvic = 0, 
+               NH3 = 0.6*nmol, alanine = 0, oxaloacetic = 0, aspartic = 0, malic = 0, 
+               fumaric = 0, succinic = 0, oxoglutaric = 0, glutamic = 0, acetolactic = 0, 
+               dihydroxyisoval = 0, methyl_oxobut = 0, valine = 0, glycine = 0, x = 1)
+
+a_no_cof <- # carbon fixation 
+  c("k_1_1*CO2*H2", # CO 
+    "k_1_2*CO2*H2", # formic acid
+    "k_1_1*formic*H2", # formaldehyde 
+    "k_1_2*formaldehyde*H2", # methanol
+    "k_2_0*methanol*CO", # acetic acid
+    # "k_1_2*methanol*CO",
+    "k_3_1*acetic*CO2*H2", # pyruvic acid 
+    # "50*acetic*CO2*H2",
+    # "500",
+    
+    "k_4_0*pyruvic*NH3*H2", # alanine 
+    
+    "k_3_2*pyruvic*CO2*500", # oxaloacetic acid 
+    "k_4_0*oxaloacetic*NH3*H2", # aspartic acid
+    
+    "k_1_2*oxaloacetic*H2", # malic acid
+    "k_5_0*malic", # fumaric acid 
+    "k_1_2*fumaric*H2", # succinic acid 
+    "k_3_1*succinic*CO2*H2", # 
+    "k_4_0*oxoglutaric*NH3*H2", # glutamic acid 
+    
+    "k_3_1*pyruvic^2",
+    "k_1_2*acetolactic*H2",
+    "k_5_0*dihydroxyisoval",
+    
+    "k_4_0*methyl_oxobut*NH3*H2", # valine
+    
+    "k_4_0*formaldehyde*NH3*H2*CO2", # glycine
+    
+    "0*k_re")
+
+a_no_cof <- # carbon fixation 
+  c("0.602*CO2*H2", # CO
+    "10*CO2*H2", # formic acid
+    "15*formic*H2", # formaldehyde
+    "108*formaldehyde*H2", # methanol
+    "0.061*methanol*CO*H2", # acetic
+    
+    "4*acetic*CO2*H2*10", # pyruvic
+    "0.17*pyruvic*NH3*H2", # alanine
+    "6.5*pyruvic*CO2", # oxaloacetic
+    "22*oxaloacetic*NH3*H2", # aspartic
+    "0.005*oxaloacetic*H2", # malic
+    
+    "11.2*malic", # fumaric
+    "230*fumaric*H2", # succinic
+    "4*succinic*CO2*H2", # oxoglutaric
+    "165.3*oxoglutaric*NH3*H2", # glutamic
+    "3.196*pyruvic^2", 
+    
+    "0.77*acetolactic*H2",
+    "0.31*dihydroxyisoval",
+    "150*methyl_oxobut*NH3*H2",
+    "0.6*formaldehyde*NH3*H2*CO2",
+    "500*x")
+
+a_no_cof <- # carbon fixation 
+  c("CO2*H2", # CO
+    "CO2*H2", # formic acid
+    "formic*H2", # formaldehyde
+    "formaldehyde*H2*100", # methanol
+    "methanol*CO*H2", # acetic
+    
+    "acetic*CO2*H2", # pyruvic
+    "pyruvic*NH3*H2", # alanine
+    "pyruvic*CO2*500", # oxaloacetic
+    "oxaloacetic*NH3*H2*400", # aspartic
+    "oxaloacetic*H2*400", # malic
+  
+    "malic*2500", # fumaric
+    "fumaric*H2*400", # succinic
+    "succinic*CO2*H2*400", # oxoglutaric
+    "oxoglutaric^2*NH3*H2", # glutamic
+    "pyruvic^2*1000", # acetolactate
+    
+    "acetolactic*H2*500", # dhydroxyvaleric 
+    "dihydroxyisoval*2500", # oxobutanoate
+    "methyl_oxobut^2*NH3*H2*1000", # valine 
+    "formaldehyde*NH3*H2*CO2/50000", # glycine
+    "0*x")
+
+a_no_cof <- # carbon fixation 
+  c("CO2*H2", # CO
+    "CO2*H2", # formic acid
+    "formic*H2", # formaldehyde
+    "formaldehyde*H2", # methanol
+    "methanol*CO*H2", # acetic
+    
+    "acetic*CO2*H2*1e-2", # pyruvic
+    "pyruvic*NH3*H2", # alanine
+    "pyruvic*CO2*1e3", # oxaloacetic
+    "oxaloacetic*NH3", # aspartic
+    "oxaloacetic*H2*1e3", # malic
+  
+    "malic*1e7", # fumaric
+    "fumaric*H2", # succinic
+    "succinic*CO2*H2", # oxoglutaric
+    "oxoglutaric^2*NH3*H2", # glutamic
+    "pyruvic^2*1e5", # acetolactate
+    
+    "acetolactic*H2*1e2", # dhydroxyvaleric 
+    "dihydroxyisoval*1e5", # oxobutanoate
+    "methyl_oxobut^2*NH3*H2*1e-2", # valine 
+    "formaldehyde*NH3*H2*CO2*1e-5", # glycine
+    "5000")
+
+
+# state change matrix
+mat_no_cof <- read.csv("no_cof_aa.csv", header=T)
+mat_no_cof <- as.matrix(mat_no_cof[-1])
+
+
+out_no_cof <- ssa(x0_no_cof, a_no_cof, mat_no_cof, parms_k_nocof, tf=0.0005)
+# ssa.plot(out_full, show.legend =T)
+
+data_no_cof <- out_no_cof[["data"]]
+
+max(data_no_cof[,"malic"])
+max(data_no_cof[,"fumaric"])
+max(data_no_cof[,"pyruvic"])
+max(data_no_cof[,"alanine"])
+max(data_no_cof[,"oxaloacetic"])
+max(data_no_cof[,"aspartic"])
+max(data_no_cof[,"glycine"])
+max(data_no_cof[,"succinic"])
+max(data_no_cof[,"fumaric"])
+max(data_no_cof[,"oxoglutaric"])
+max(data_no_cof[,"glutamic"])
+max(data_no_cof[,"CO"])
+max(data_no_cof[,"formic"])
+max(data_no_cof[,"formaldehyde"])
+max(data_no_cof[,"methanol"])
+max(data_no_cof[,"acetic"])
+max(data_no_cof[,"valine"])
+max(data_no_cof[,"acetolactic"])
+max(data_no_cof[,"dihydroxyisoval"])
+max(data_no_cof[,"methyl_oxobut"])
+
+# max(data_no_cof[,"NH3"])
+# max(data_no_cof[,"CO2"])
+# max(data_no_cof[,"H2"])
+cat("Chunk run")
+```
+
+``` {r no cofactos 5 aa graphs, fig.height = 6, echo=FALSE}
+par(mfrow=c(2,4))
+
+plot(data_no_cof[,1], data_no_cof[,2], main ="CO2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,3], main ="H2", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,4], main ="CO", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,5], main ="H2O", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,6], main ="formic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,7], main ="formaldehyde", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,8], main ="methanol", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,9], main ="acetic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+par(mfrow=c(2,4))
+
+plot(data_no_cof[,1], data_no_cof[,10], main ="pyruvic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,11], main ="NH3", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,12], main ="alanine", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,13], main ="oxaloacetic acid", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,14], main ="aspartic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,15], main ="malic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,16], main ="fumaric acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,17], main ="succinic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+
+par(mfrow=c(2,4))
+
+plot(data_no_cof[,1], data_no_cof[,18], main ="oxoglutaric acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,19], main ="glutamic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,20], main ="acetolactic acid", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,21], main ="dihydroxyisovaleric acid", pch=20, cex=0.3, 
+     xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,22], main ="3-methyl-2-oxobutanoate", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,23], main ="valine", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+plot(data_no_cof[,1], data_no_cof[,24], main ="glycine", pch=20, cex=0.3,
+      xlab ="Time", ylab="Concentration")
+```
