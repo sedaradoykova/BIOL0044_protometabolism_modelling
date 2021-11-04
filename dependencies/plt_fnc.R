@@ -20,13 +20,13 @@ plt_fnc = function(to_plot, data, n_plots = F) {
                                  mapping = aes(x = t, y = .data[[ species[index[i]] ]]  )) +
             geom_point(size = 0.5, color = "black") +
             theme_classic() +
-            xlab("Time") + ylab("Concentration") +
+            xlab("Time") + ylab("Molecules") +
             ggtitle(str_c(str_split(to_plot[i], "_")[[1]], collapse = " ")) +
             theme(axis.text.x = element_blank(), 
                   axis.ticks.x = element_blank(),
-                  axis.title.x = element_text(size = 9),
-                  axis.title.y = element_text(size = 9),
-                  plot.title = element_text(size = 10, face = "italic"))
+                  axis.title.x = element_text(size = 8),
+                  axis.title.y = element_text(size = 8),
+                  plot.title = element_text(size = 9, face = "italic"))
     }
     
     if (n_plots == T) cat("Output contains", length(to_plot), "plots.")
