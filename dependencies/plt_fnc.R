@@ -6,8 +6,9 @@ library("stringr")
 ###### NB match spelling to simulation input
 ### data = output of ssa() sinulation 
 ### n_plots = prints a statement of the number of plots
+### col = specifies the color of the plot points
 
-plt_fnc = function(to_plot, data, n_plots = F) {
+plt_fnc = function(to_plot, data, n_plots = F, col = "black") {
     # initialise output list and index
     species = colnames(data) # column names matching to vars sim-d
     index = match(to_plot, species) # index matching to_plot to data columns
@@ -18,7 +19,7 @@ plt_fnc = function(to_plot, data, n_plots = F) {
     for (i in seq_along(index)) {
         plots_out[[i]] <- ggplot(data = as.data.frame(data), 
                                  mapping = aes(x = t, y = .data[[ species[index[i]] ]]  )) +
-            geom_point(size = 0.5, color = "black") +
+            geom_point(size = 0.5, color = col) +
             theme_classic() +
             xlab("Time") + ylab("Molecules") +
             ggtitle(str_c(str_split(to_plot[i], "_")[[1]], collapse = " ")) +
