@@ -11,11 +11,15 @@ This is done using the `GillespieSSA` package in *R*, and this repo contains the
 Files: 
 
 - `reversible_network.RMD` = contains the latest progress with introducing reversible reactions into the model
-  - `lia_matrices.RDATA` = associated .RDATA file containing data produced/used by summer student, which forms the basis of the model
-- `reversible_network_cleanup.RMD` = file with notes exploring summer student's code and data; used to produce the .RDATA file above
-- `intro_notes_gillespie.R` = rudimentary notes on `GillespieSSA` package use and synthax
+- `lia_matrices.RData` = associated .RDATA file containing data produced/used by summer student, which forms the basis of the model
+- `reversible_c_fix.csv` = state-change matrix for reversible carbon fixation reactions
+-  `reversible_network_progress.html` = brief report of latest progress
 
 Folders: 
+
 - `dependencies/` = contains snippets of R scripts used to automate tasks _e.g._ plotting in main .RMD files
+- `other_RMDs` = files with old notes and analyses _etc_
+    - `reversible_network_cleanup.RMD` = file with notes exploring summer student's code and data; used to produce the .RDATA file above
+    - `intro_notes_gillespie.R` = rudimentary notes on `GillespieSSA` package use and synthax
 - `reading/` = notes made and papers downloaded for reference
 - `Lia_summer_proj/` = local clone of summer student's repo
