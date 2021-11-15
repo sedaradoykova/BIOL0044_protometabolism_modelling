@@ -1,5 +1,4 @@
-# BIOL0044 MSci Investigaive Project for the Biological Sciences: 
-## Modelling Protometabolism
+# BIOL0044 MSci Investigaive Project for the Biological Sciences: Modelling Protometabolism
 _Code and reading materials related to my **BIOL0044 MSci Investigative Project** at the Lane Origins lab._  
 
 ## Project aims and outline
