@@ -1,6 +1,6 @@
 ---
 output:
-  html_document: default
+  pdf_document: default
 ---
 
 
@@ -26,10 +26,29 @@ The simulations of forward reactions (in black) yield plots very similar to simu
 However, when forward and backward reaction rates are equal (in blue), the simulation is truncated early and an error message is displayed, `negative propensity function - coersing to zero`. In other words, we sometimes observe negative values _e.g._ for formaldehyde, methanol, $CO$, acetate, $H_2O$. In some simulations, the number of $CO_2$ and $H_2$ molecules surpses the initial input values. This could be caused both by the low numbers of chemical species and by the fact that certain reactants are depleted (and/or replenished) by multiple reactions. Possible solutions would include adjusting the time-step or the relative magnitude of the forward and backward reaction rates to push the system away from chemical equilibrium. <br> <br>
 _Note that not all features described here might be seen in the plots below, as every simulation yields slightly different resuls._ <br><br>
 
+## Reactions, Parameters, and Conditions
 
-#### BLACK Forward reactions (Lia's simulation)
+The reactions and parameters used in the simulations are summarised below: 
+
+| Forward reactions | Parameters |
+|-------------------|------------|
+| $k_{1}*CO_{2}*H_{2}$ | $k_{1} = 10$ |
+| $k_{2}*formic\ acid*H_{2}$ | $k_{2} = 19.9$ |
+| $k_{3}*formaldehyde*H_{2}$ | $k_{3} = 23.5$ |
+| $k_{4}*methanol*CO$ | $k_{4} = 0.869$ |
+| $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
+| $20*formic\ acid$ | |
+
+Conditions kept constant across simulations: 
+
+* initial reactants numbers: $CO_{2} = H_{2} = 500\ mol$
+* timestep size: tf = $0.0005$ 
+<br> <br>
+
+
 
 ``` {r carbon fixation new, warning=FALSE, echo=FALSE}
+#### BLACK Forward reactions (Lia's simulation)
 # no_cofactors
 
 parms_k <- c(
@@ -109,9 +128,11 @@ mat_rev_c_fix <- as.matrix(read.csv("reversible_c_fix.csv", header = F)[-1])
 ```
 
 
-#### RED Reversible reactions - negligible backward rates
+
 
 ```{r}
+#### RED Reversible reactions - negligible backward rates
+
 # parameters
 parms_k <- c(k_1 = 10, k_1a = 0.01, 
              k_2 = 19.9, k_2a = 0.199, 
@@ -136,9 +157,11 @@ rev_negl = plt_fnc(
 ```
 
 
-#### BLUE Reversible reactions - equal forward/backward rates
+
 
 ```{r}
+#### BLUE Reversible reactions - equal forward/backward rates
+
 # parameters
 parms_k <- c(k_1 = 10, k_1a = 10, 
              k_2 = 19.9, k_2a = 19.9, 
@@ -167,7 +190,7 @@ rev_eq = plt_fnc(
 ```
 
 
-
+\newpage
 
 ```{r fig.height=3.5}
 #for (i in 1:8) cat("fwd[[", i, "]] + ","rev_negl[[", i, "]] + ", "rev_eq[[", i, "]] + ", sep = "")
@@ -188,24 +211,6 @@ fwd[[7]] + rev_negl[[7]] + rev_eq[[7]] + fwd[[8]] + rev_negl[[8]] + rev_eq[[8]]
 
 
 
-## Reactions, Parameters, and Conditions
-
-The reactions and parameters used in the simulations are summarised below: 
-
-| Forward reactions | Parameters |
-|-------------------|------------|
-| $k_{1}*CO_{2}*H_{2}$ | $k_{1} = 10$ |
-| $k_{2}*formic\ acid*H_{2}$ | $k_{2} = 19.9$ |
-| $k_{3}*formaldehyde*H_{2}$ | $k_{3} = 23.5$ |
-| $k_{4}*methanol*CO$ | $k_{4} = 0.869$ |
-| $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
-| $20*formic\ acid$ | |
-
-Conditions kept constant across simulations: 
-
-* initial reactants numbers: $CO_{2} = H_{2} = 500\ mol$
-* timestep size: tf = $0.0005$ 
-<br> <br>
 
 
 
