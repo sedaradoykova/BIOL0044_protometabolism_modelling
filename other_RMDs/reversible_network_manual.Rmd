@@ -1,0 +1,202 @@
+---
+output:
+  html_document: default
+---
+
+```{r setup, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.pos = "!H", out.extra = "")
+library("GillespieSSA")
+library("ggplot2")
+library("patchwork")
+library("stringr")
+# SOURCE .RDATA FILE of Lias matrices (.csv)
+load(file = "lia_matrices.RData")
+source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/plt_fnc.R") # plotting function
+source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/react_prod_names.R")
+load("co2_fix_mat.RData")
+```
+
+
+### Reactant/product names (i.e. reactions)
+
+```{r}
+# getting reactant and product names 
+#reac_prod = read.table(file = "clipboard", header = F, sep = "\t")
+#react = react_prod_names(reac_prod$V1)
+#prod = react_prod_names(reac_prod$V2)
+all_spec = unique(unlist(c(react, prod)))
+#save(react, prod, all_spec, st_ch_mat, st_ch_df, file = "co2_fix_mat.RData")
+```
+
+### State change matrix
+
+```{r}
+st_ch_mat = matrix(
+  data = rep(0, (length(all_spec) * length(react))),
+  nrow = length(all_spec),
+  ncol = length(react)
+)
+
+for (i in seq_along(react)) {
+  for (j in seq_along(react[[i]])) {
+    tmp_row = which(react[[i]][j] == all_spec)
+    st_ch_mat[tmp_row,i] = -1 
+  }
+  for (j in seq_along(prod[[i]])) {
+    tmp_row = which(prod[[i]][j] == all_spec)
+    st_ch_mat[tmp_row,i] = +1 
+  }
+}
+
+st_ch_mat
+st_ch_df = as.data.frame(x = st_ch_mat, row.names = all_spec)
+#colnames(st_ch_df) = tolower(str_replace_all(some_rxn_names, " ", "_"))
+#print.data.frame(st_ch_df)
+#write.csv(st_ch_df, "co2_fix.csv")
+```
+
+
+### Reaction formulae
+
+```{r}
+# reactant*reactant 
+ks = vector(mode = "character", length = length(react))
+a = 0
+for (i in seq_along(react)) {
+  a = a + 1
+  ks[a] = str_c(react[[i]], collapse = "*")
+}
+
+
+#k_1*reactant*reactant
+full_ks = vector(mode = "character", length = length(react))
+#k_whatever
+k_char = vector("character", length(ks))
+for (i in seq_along(ks)) {
+  cat("\"k_", i, "*", ks[i], "\",\n", sep = "")
+  full_ks[i] = str_c("k_", i, "*", ks[i], collapse = "")
+  k_char[i] = str_c("k_", i, collapse = "")
+}
+```
+
+```{r}
+k_char
+ks
+full_ks
+```
+
+
+### Run model here  
+
+```{r}
+params_k = c(10, 19.9, 23.5, 0.869, 0.061)
+names(params_k) = k_char
+```
+
+```{r}
+#initial concentrations of reactants and products involved 
+# named vector of quantities 
+nmol = 5000
+x_co2_fix = c(rep(nmol, 2), rep(0,6))
+names(x_co2_fix) = all_spec
+```
+
+```{r}
+# reactions rates / probability of reaction
+a_co2_fix = full_ks
+```
+
+```{r}
+# state change matrix
+mat_co2_fix = st_ch_mat
+
+# simulation
+out_co2_fix <- ssa(x0 = x_co2_fix, a = a_co2_fix, 
+                      nu = mat_co2_fix, parms = params_k, 
+                      tf = 0.0005, method = ssa.d())
+```
+
+```{r}
+# plot output
+co2_fix = plt_fnc(
+  to_plot = colnames(out_co2_fix[["data"]])[-1], 
+  data = out_co2_fix[["data"]], col = "red"
+  )
+```
+
+
+### Lia's simulations
+
+```{r}
+parms_k <- c(
+  k_1 = 10,
+  k_2 = 19.9,
+  k_3 = 23.5,
+  k_4 = 0.869,
+  k_5 = 0.061
+) 
+nmol <- 5000
+
+#initial concentrations of reactants and products involved 
+x_c_fix <- c(CO2 = nmol, H2 = nmol, formic_acid = 0,
+        formaldehyde = 0, methanol = 0, CO = 0, acetic_acid = 0, H2O = 0) 
+
+a_c_fix <- #carbon fixation
+  c(
+    "k_1*CO2*H2",
+    "k_2*formic_acid*H2",
+    "k_3*formaldehyde*H2",
+    "k_4*methanol*CO",
+    "k_5*CO2*H2"
+  )
+
+# state change matrix
+
+mat_c_fix <- as.matrix(csvs_matrices$no_cofactors[,2:6])
+
+out_c_fix <- ssa(x0 = x_c_fix, a = a_c_fix, 
+                      nu = mat_c_fix, parms = parms_k, 
+                      tf = 0.0005, method = ssa.d())
+```
+
+``` {r carbon fixation new, warning=FALSE, echo=FALSE}
+parms_k
+params_k
+
+#initial concentrations of reactants and products involved 
+x_co2_fix
+x_c_fix 
+
+a_c_fix 
+a_co2_fix
+
+# state change matrix
+
+mat_c_fix 
+mat_co2_fix
+```
+
+```{r}
+fwd = plt_fnc(
+  to_plot = colnames(out_c_fix[["data"]])[-1], 
+  data = out_c_fix[["data"]], col = "black"
+  )
+#for (i in 1:16) cat("p1[[", i, "]] + ", sep = "")
+# fwd[[1]] + fwd[[2]] + fwd[[3]] + fwd[[4]] + fwd[[5]] + fwd[[6]] + fwd[[7]] + fwd[[8]]
+```
+
+
+# Manually implemented simualtions - RED
+```{r fig.height=3.5}
+co2_fix[[1]] + co2_fix[[2]] + co2_fix[[3]] + co2_fix[[4]] + co2_fix[[5]] + co2_fix[[6]] + co2_fix[[7]] + co2_fix[[8]]
+```
+
+# Lia's sim - BLACK
+
+```{r fig.height=3.5}
+fwd[[1]] + fwd[[2]] + fwd[[3]] + fwd[[4]] + fwd[[5]] + fwd[[6]] + fwd[[7]] + fwd[[8]]
+```
+
+
+
+

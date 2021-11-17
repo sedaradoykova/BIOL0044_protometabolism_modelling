@@ -5,14 +5,15 @@ output:
 
 
 ```{r setup, warning=FALSE, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.pos = "!H", out.extra = "")
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, out.extra = "")
 library("GillespieSSA")
 library("ggplot2")
 library("patchwork")
 library("stringr")
 # SOURCE .RDATA FILE of Lias matrices (.csv)
 load(file = "lia_matrices.RData")
-source(file = "dependencies/plt_fnc.R") # plotting function
+source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/plt_fnc.R") # plotting function
+getwd()
 ```
 
 ```{r out.width="20%"}
@@ -37,11 +38,10 @@ The reactions and parameters used in the simulations are summarised below:
 | $k_{3}*formaldehyde*H_{2}$ | $k_{3} = 23.5$ |
 | $k_{4}*methanol*CO$ | $k_{4} = 0.869$ |
 | $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
-| $20*formic\ acid$ | |
 
 Conditions kept constant across simulations: 
 
-* initial reactants numbers: $CO_{2} = H_{2} = 500\ mol$
+* initial reactants numbers: $CO_{2} = H_{2} = 5000\ molecules$
 * timestep size: tf = $0.0005$ 
 <br> <br>
 
@@ -70,12 +70,12 @@ a_c_fix <- #carbon fixation
     "k_2*formic_acid*H2",
     "k_3*formaldehyde*H2",
     "k_4*methanol*CO",
-    "k_5*CO2*H2",
-    "20*formic_acid"
+    "k_5*CO2*H2"
   )
 
 # state change matrix
-mat_c_fix <- as.matrix(csvs_matrices$no_cofactors[,-1])
+
+mat_c_fix <- as.matrix(csvs_matrices$no_cofactors[,2:6])
 
 out_c_fix <- ssa(x0 = x_c_fix, a = a_c_fix, 
                       nu = mat_c_fix, parms = parms_k, 
@@ -83,9 +83,7 @@ out_c_fix <- ssa(x0 = x_c_fix, a = a_c_fix,
 
 # cat("Why is the sum of the matrix =", sum(mat_co_fix_new), "???")
 #cat("Output dim =", dim(out_co_fix_new$data))
-```
 
-```{r}
 fwd = plt_fnc(
   to_plot = colnames(out_c_fix[["data"]])[-1], 
   data = out_c_fix[["data"]], col = "black"
@@ -119,9 +117,7 @@ a_rev_c_fix <- c( # carbon fixation
                   "k_4*methanol*CO",
                   "k_4a*methanol*CO",
                   "k_5*CO2*H2",
-                  "k_5a*CO2*H2",
-                  "20*formic_acid",
-                  "20*formic_acid")
+                  "k_5a*CO2*H2")
 
 # state change matrix
 mat_rev_c_fix <- as.matrix(read.csv("reversible_c_fix.csv", header = F)[-1])
@@ -134,11 +130,11 @@ mat_rev_c_fix <- as.matrix(read.csv("reversible_c_fix.csv", header = F)[-1])
 #### RED Reversible reactions - negligible backward rates
 
 # parameters
-parms_k <- c(k_1 = 10, k_1a = 0.01, 
-             k_2 = 19.9, k_2a = 0.199, 
-             k_3 = 23.5, k_3a = 0.235, 
-             k_4 = 0.869, k_4a = 0.00869, 
-             k_5 = 0.061, k_5a = 0.00061)
+parms_k <- c(k_1 = 10, k_1a = 0.001, 
+             k_2 = 19.9, k_2a = 0.0199, 
+             k_3 = 23.5, k_3a = 0.0235, 
+             k_4 = 0.869, k_4a = 0.000869, 
+             k_5 = 0.061, k_5a = 0.000061)
 
 #output
 out_rev_c_fix <- ssa(x0 = x_rev_c_fix, 
@@ -190,18 +186,23 @@ rev_eq = plt_fnc(
 ```
 
 
+
+#### BLACK Forward reactions (Lia's simulation)
+#### RED Reversible reactions - negligible backward rates
+#### BLUE Reversible reactions - equal forward/backward rates
+
 \newpage
 
-```{r fig.height=3.5}
+```{r fig.height=3.5, fig.cap="BLACK Forward reactions (Lia's simulation)"}
 #for (i in 1:8) cat("fwd[[", i, "]] + ","rev_negl[[", i, "]] + ", "rev_eq[[", i, "]] + ", sep = "")
 fwd[[1]] + rev_negl[[1]] + rev_eq[[1]] + fwd[[2]] + rev_negl[[2]] + rev_eq[[2]]
 ```
 
-```{r fig.height=3.5}
+```{r fig.height=3.5, fig.cap="RED Reversible reactions - negligible backward rates"}
 fwd[[3]] + rev_negl[[3]] + rev_eq[[3]] + fwd[[4]] + rev_negl[[4]] + rev_eq[[4]]
 ```
 
-```{r fig.height=3.5}
+```{r fig.height=3.5, fig.cap="BLUE Reversible reactions - equal forward/backward rates"}
 fwd[[5]] + rev_negl[[5]] + rev_eq[[5]] + fwd[[6]] + rev_negl[[6]] + rev_eq[[6]]
 ```
 
@@ -211,17 +212,23 @@ fwd[[7]] + rev_negl[[7]] + rev_eq[[7]] + fwd[[8]] + rev_negl[[8]] + rev_eq[[8]]
 
 
 
+\newpage 
 
+Additionally, I recoded the state-change matrices from scratch in order to make sure that the code was bug-free. (In the process I wrote a couple of functions which should make it easier to model bigger networks, using the excel files which Stuart supplies as an input.) The to compare, the simulations yield the following results. 
 
-
-```{r}
-# # Notes before my brain switches off completely
-# * When I decreased the time step by 2 orders of magnitude, things crashed at step 6 insteras of step 3 :) 
-# 
-# * I am not sure if the algo knows that the CO2 produced in reaction 1 is the same as the CO2 consumed in reaction 2... 
-#   * i.e. does it stop to sum the two CO2 columns and use the pooled CO2 for the next reaction? 
-#     * https://github.com/rcannood/GillespieSSA/blob/master/R/ssa.run.R
-# * If it doesn't 
-#   * Should we implement the algo from scratch? 
-#   * Should we only model forward reactions, making the probability of the forward reaction occuring a composite variable which captures the rates of the forwards and backwards reactiion? 
+```{r fig.cap="Lia's original simulation. It is strange because the chunk in the github files ran a simulation without k values in the chemical equations. It also had a reaction which replenished formic acid."}
+knitr::include_graphics("lia_sim.png")
 ```
+
+```{r fig.cap="This simulation still had the replenishing formic acid reaction but it also had k values for the reactions."}
+knitr::include_graphics("lia_sim_2.png")
+```
+
+```{r fig.cap="I removed the sixth reaction and ran the same simulation as above."}
+knitr::include_graphics("lia_sim_seda.png")
+```
+
+```{r fig.cap="Recoding all parameters, equations, and the state-change matrix, I got the following results."}
+knitr::include_graphics("seda_sim.png")
+```
+

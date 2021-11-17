@@ -78,6 +78,7 @@ all_spec = unique(c(all_react, all_prod))
 - ribose vs ribulose 
 - 2-amino-2-but-2-enoate
 - 2-amino-2-but-enoate
+- pyruvate + pyruvate == 2 pyruvate
 
 ```{r}
 # initialise empty matrix with

@@ -1,7 +1,7 @@
 library("ggplot2")
 library("stringr")
 
-# plt_fnc uses the output of simulation to plot only variables of interest
+# plt_fnc() uses the output of simulation to plot only variables of interest
 ### to _plot = specify which varaibles to plot 
 ###### NB match spelling to simulation input
 ### data = output of ssa() sinulation 
@@ -25,9 +25,9 @@ plt_fnc = function(to_plot, data, n_plots = F, col = "black") {
             ggtitle(str_c(str_split(to_plot[i], "_")[[1]], collapse = " ")) +
             theme(axis.text.x = element_blank(), 
                   axis.ticks.x = element_blank(),
-                  axis.title.x = element_text(size = 8),
-                  axis.title.y = element_text(size = 8),
-                  plot.title = element_text(size = 9, face = "italic"))
+                  axis.title.x = element_text(size = 6),
+                  axis.title.y = element_text(size = 6),
+                  plot.title = element_text(size = 8, face = "italic"))
     }
     
     if (n_plots == T) cat("Output contains", length(to_plot), "plots.")
