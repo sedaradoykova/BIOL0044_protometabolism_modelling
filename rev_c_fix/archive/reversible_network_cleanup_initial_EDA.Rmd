@@ -284,6 +284,7 @@ data = out_co_fix_new[["data"]]
 head(data)
 #data[,2] + data[,3]
 ```
+
 ## Notes before my brain switches off completely
 * When I decreased the time step by 2 orders of magnitude, things crashed at step 6 insteras of step 3 :) 
 

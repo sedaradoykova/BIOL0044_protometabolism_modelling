@@ -9,11 +9,13 @@ knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, out.extra 
 library("GillespieSSA")
 library("ggplot2")
 library("patchwork")
+library("ggpmisc")
 library("stringr")
+library("grid")
+library("gridExtra")
 # SOURCE .RDATA FILE of Lias matrices (.csv)
 load(file = "lia_matrices.RData")
 source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/plt_fnc.R") # plotting function
-getwd()
 ```
 
 ```{r out.width="20%"}
@@ -31,13 +33,13 @@ _Note that not all features described here might be seen in the plots below, as 
 
 The reactions and parameters used in the simulations are summarised below: 
 
-| Forward reactions | Parameters |
-|-------------------|------------|
-| $k_{1}*CO_{2}*H_{2}$ | $k_{1} = 10$ |
-| $k_{2}*formic\ acid*H_{2}$ | $k_{2} = 19.9$ |
-| $k_{3}*formaldehyde*H_{2}$ | $k_{3} = 23.5$ |
-| $k_{4}*methanol*CO$ | $k_{4} = 0.869$ |
-| $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
+|Forward reaction | Propensity function | Parameter |
+|-----------------|---------------------|-----------|
+| $CO2 + H_{2} \rightarrow formic acid$ | $k_{1}*CO_{2}*H_{2}$ | $k_{1} = 10$ |
+| $formic acid + H_{2} \rightarrow formaldehyde + H_{2}O$ | $k_{2}*formic\ acid*H_{2}$ | $k_{2} = 19.9$ |
+| $formaldehyde + H_{2} \rightarrow methanol$ | $k_{3}*formaldehyde*H_{2}$ | $k_{3} = 23.5$ |
+| $CO_{2} + H_{2} \rightarrow CO + H_{2}O$ | $k_{4}*methanol*CO$ | $k_{4} = 0.869$ |
+| $methanol + CO \rightarrow acetic acid$ | $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
 
 Conditions kept constant across simulations: 
 
@@ -109,15 +111,15 @@ x_rev_c_fix <- c(
 
 a_rev_c_fix <- c( # carbon fixation
                   "k_1*CO2*H2",
-                  "k_1a*CO2*H2",
+                  "k_1a*formic_acid",
                   "k_2*formic_acid*H2",
-                  "k_2a*formic_acid*H2",
+                  "k_2a*formaldehyde*H2O",
                   "k_3*formaldehyde*H2",
-                  "k_3a*formaldehyde*H2",
+                  "k_3a*methanol",
                   "k_4*methanol*CO",
-                  "k_4a*methanol*CO",
+                  "k_4a*acetic_acid",
                   "k_5*CO2*H2",
-                  "k_5a*CO2*H2")
+                  "k_5a*CO*H2O")
 
 # state change matrix
 mat_rev_c_fix <- as.matrix(read.csv("reversible_c_fix.csv", header = F)[-1])
@@ -141,7 +143,7 @@ out_rev_c_fix <- ssa(x0 = x_rev_c_fix,
                       a = a_rev_c_fix, 
                       nu = mat_rev_c_fix,
                       parms = parms_k, 
-                      tf = 0.0005, verbose = F)
+                      tf = 0.0005, verbose = F, ignoreNegativeState = F)
 #cat("Output dim =", dim(out_rev_c_fix$data))
 
 rev_negl = plt_fnc(
@@ -170,11 +172,15 @@ x_rev_c_fix_eq = x_rev_c_fix
 a_rev_c_fix_eq = a_rev_c_fix
 
 #output
-out_rev_c_fix <- ssa(x0 = x_rev_c_fix_eq, 
-                      a = a_rev_c_fix_eq, 
-                      nu = mat_rev_c_fix,
-                      parms = parms_k, 
-                      tf = 0.0005, verbose = F)
+out_rev_c_fix <- ssa(x0 = x_rev_c_fix_eq,
+                     a = a_rev_c_fix_eq, 
+                     nu = mat_rev_c_fix,
+                     parms = parms_k,
+                     tf = 0.0005, 
+                     ignoreNegativeState = F, 
+                     method = ssa.d(),
+                     verbose = F, 
+                     consoleInterval = 0.000001)
 #cat("Output dim =", dim(out_rev_c_fix$data))
 
 rev_eq = plt_fnc(
@@ -182,8 +188,46 @@ rev_eq = plt_fnc(
   data = out_rev_c_fix[["data"]], col = "blue"
   )
 #for (i in 1:16) cat("p1[[", i, "]] + ", sep = "")
-#rev_eq[[1]] + rev_eq[[2]] + rev_eq[[3]] + rev_eq[[4]] + rev_eq[[5]] + rev_eq[[6]] + rev_eq[[7]] + rev_eq[[8]]
+fig = rev_eq[[1]] + rev_eq[[2]] + rev_eq[[3]] + rev_eq[[4]] + rev_eq[[5]] + rev_eq[[6]] + rev_eq[[7]] + rev_eq[[8]]
 ```
+
+```{r}
+table = data.frame(propensity_fnc = out_rev_c_fix$args$a,
+                   parameters = str_c(names(out_rev_c_fix$args$parms),
+                                      " = ",
+                                      out_rev_c_fix$args$parms))
+ggsave(fig + (ggplot() + theme_void()) +
+         annotate(geom = "table", x = 10, y = 2,
+                  label = list(table), vjust = 0.45, hjust = 0.5),
+       file = paste0("rev_sim_works.png"), width = 30, height = 20, units = "cm")
+# ggsave(fig,
+#        file = paste0("rev_sim_works1.png"), width = 18, height = 13, units = "cm")
+```
+
+
+## Plot all together
+
+```{r}
+df = as.data.frame(out_rev_c_fix[["data"]])
+
+all_react = ggplot(df, aes(x = t)) +
+  geom_line(aes(y = CO2, colour = "CO2")) +
+  geom_line(aes(y = H2, colour = "H2")) + 
+  geom_line(aes(y = formic_acid, colour = "formic_acid")) +
+  geom_line(aes(y = formaldehyde, colour = "formaldehyde")) +
+  geom_line(aes(y = methanol, colour = "methanol")) +
+  geom_line(aes(y = CO, colour = "CO")) +
+  geom_line(aes(y = acetic_acid, colour = "acetic_acid")) +
+  geom_line(aes(y = H2O, colour = "H2O")) + 
+  theme_minimal() +
+  ylim(0, 2500) + 
+  ggtitle("Reversible C fixation") +
+  xlab("Time") + ylab("Number of molecules") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks = element_blank()) +
+  guides(colour = guide_legend(title = "Species"))
+```
+
 
 
 
@@ -230,5 +274,97 @@ knitr::include_graphics("lia_sim_seda.png")
 
 ```{r fig.cap="Recoding all parameters, equations, and the state-change matrix, I got the following results."}
 knitr::include_graphics("seda_sim.png")
+```
+
+
+
+#### Try table format 
+
+```{r eval = F}
+
+#grid.arrange(tableGrob(table, theme = ttheme_minimal(), rows = NULL))
+
+void <- rectGrob(x = 0.5, y = 0.5, width = 0.8, height = 0.3)
+tab_plt = grid.table(table, rows = NULL)
+grid.arrange(void, grid.draw(tab_plt), ncol=2)
+
+grid.draw(void)
+grid.draw(tab_plt)
+# ttheme_default(colhead=list(fg_params = list(parse=TRUE)))
+```
+
+
+# Debugging using source code   
+
+```{r eval = F}
+out_rev_c_fix <- ssa(
+  x0 = x_rev_c_fix_eq,
+  a = a_rev_c_fix_eq,
+  nu = mat_rev_c_fix,
+  parms = parms_k,
+  tf = 0.005,
+  ignoreNegativeState = T,
+  method = ssa.d(),
+  verbose = F
+)
+
+apply(out_c_fix$data[,-1], 2, min)
+
+print(out_rev_c_fix$stats$nSteps)
+
+# Warning in ssa(x0 = x_rev_c_fix_eq, a = a_rev_c_fix_eq, nu = mat_rev_c_fix,  :
+#  negative propensity function - coersing to zero
+```
+
+```{r eval = F}
+propensity.funs = a_rev_c_fix_eq
+x = x_rev_c_fix_eq
+parms = parms_k
+
+names(propensity.funs) <- NULL
+
+x.names <- names(x)
+parms.names <- names(parms)
+
+strings <- sapply(seq_along(propensity.funs), function(i) {
+  # i=1
+  string <- propensity.funs[[i]]
+  
+  aag <-
+    strsplit(gsub("([A-Za-z][A-Za-z0-9_]*)", " \\1 ", string), " ")[[1]]
+  
+  # check for x
+  aag.match <- match(aag, x.names)
+  ix <- !is.na(aag.match)
+  aag[ix] <- paste0("x[[", aag.match[ix], "]]")
+  
+  # check for parms
+  aag.match <- match(aag, parms.names)
+  ix <- !is.na(aag.match)
+  aag[ix] <- paste0("parms[[", aag.match[ix], "]]")
+  
+  # create line of code
+  paste0("  a[[", i, "]] <- ",
+         paste(aag, collapse = ""),
+         "\n")
+})
+
+funtext <- paste0(
+  "function(x, parms) {\n",
+  "  a <- rep(NA, ",
+  length(propensity.funs),
+  ")\n",
+  paste(strings, collapse = ""),
+  "  a\n",
+  "}\n"
+)
+
+eval(parse(text = funtext))
+
+
+
+cat(str_c(a_rev_c_fix_eq, "  ", parms_k, "  "), sep = "\n")
+print(x_rev_c_fix, sep = "\n")
+parse(text = funtext)
 ```
 

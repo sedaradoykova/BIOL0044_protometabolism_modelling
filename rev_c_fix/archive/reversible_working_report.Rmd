@@ -1,0 +1,168 @@
+---
+output:
+  pdf_document: default
+---
+
+```{r setup, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, fig.pos = "!H", out.extra = "")
+library("GillespieSSA")
+library("ggplot2")
+library("patchwork")
+library("stringr")
+source(file = "dependencies/plt_fnc.R") # plotting function
+load("big_pathway_sim_prep.RData")
+```
+
+```{r}
+rxns = readxl::read_excel("bigger_pathway_rxns.xlsx")
+```
+
+```{r}
+# replacing NAs in pathway name
+nas = c(which(!is.na(rxns$Pathway)), length(rxns$Pathway) + 1)
+s = 1 
+for (i in nas[-1]) {  # 10 reactions
+  e = i - 1
+  rxns$Pathway[s:e] = rxns$Pathway[s]
+  s = i 
+}  
+#print(rxns$Pathway)
+```
+
+### Normalising reactant and product names (removing " ", uniform capitalisation). 
+
+```{r}
+react = rxns$Reactants
+react = str_split(react, " \\+ ")
+for (i in seq_along(react)) {
+  react[[i]] = str_replace_all(react[[i]], " ", "_")
+  for (j in seq_along(react[[i]])) {
+    if (nchar(react[[i]][j]) <= 3) react[[i]][j] = toupper(react[[i]][j])
+    else react[[i]][j] = tolower(react[[i]][j])
+  }
+}
+names(react) = str_replace_all(rxns$Pathway, " ", "_")
+```
+
+```{r}
+prod = rxns$Products
+prod = str_split(prod, " \\+ ")
+for (i in seq_along(prod)) {
+  prod[[i]] = str_replace_all(prod[[i]], " ", "_")
+  for (j in seq_along(prod[[i]])) {
+    if (nchar(prod[[i]][j]) <= 3) prod[[i]][j] = toupper(prod[[i]][j])
+    else prod[[i]][j] = tolower(prod[[i]][j])
+  }
+}
+names(prod) = str_replace_all(rxns$Pathway, " ", "_")
+```
+
+```{r}
+all_react = unique(unlist(react))
+all_prod =  unique(unlist(prod))
+which(all_react %in% all_prod)
+which(!(all_react %in% all_prod))
+length(all_react)
+length(all_prod)
+length(which(all_react %in% all_prod))
+all_react[which(!(all_react %in% all_prod))]
+all_react
+all_prod
+all_spec = unique(c(all_react, all_prod))
+#cat(sort(all_spec), sep = "\n")
+```
+
+### Reaction state-change matrix 
+
+- asparate vs aspartate (semialdehyde)
+- ribose vs ribulose 
+- 2-amino-2-but-2-enoate
+- 2-amino-2-but-enoate
+- pyruvate + pyruvate == 2 pyruvate
+
+```{r}
+# initialise empty matrix with
+# rows corresponding to chemical species and
+# columns corresponding to chemical reactions 
+st_ch_mat = matrix(data = rep(0, (35*49)), nrow = length(all_spec), ncol = length(rxns$Pathway))
+
+for (i in seq_along(rxns$Pathway)) {
+  for (j in seq_along(react[[i]])) {
+    tmp_row = which(react[[i]][j] == all_spec)
+    st_ch_mat[tmp_row,i] = -1 
+  }
+  for (j in seq_along(prod[[i]])) {
+    tmp_row = which(prod[[i]][j] == all_spec)
+    st_ch_mat[tmp_row,i] = +1 
+  }
+}
+#st_ch_mat
+```
+
+```{r}
+st_ch_df = as.data.frame(x = st_ch_mat, row.names = all_spec)
+colnames(st_ch_df) = tolower(str_replace_all(rxns$`Reaction type`, " ", "_"))
+print.data.frame(st_ch_df)
+#write.csv(st_ch_df, "big_st_ch_matrix.csv")
+```
+
+
+### Reaction formulae
+
+```{r}
+# reactant*reactant 
+ks = vector(mode = "character", length = length(react))
+a = 0
+for (i in seq_along(react)) {
+  a = a + 1
+  ks[a] = str_c(react[[i]], collapse = "*")
+}
+
+#k_1*reactant*reactant
+full_ks = vector(mode = "character", length = length(react))
+for (i in seq_along(ks)) {
+  cat("\"k_", i, "*", ks[i], "\",\n", sep = "")
+  full_ks[i] = str_c("k_", i, "*", ks[i], collapse = "")
+}
+full_ks
+```
+
+```{r}
+# k_whatever
+k_char = vector("character", length(ks))
+for (i in seq_along(ks)) {
+  k_char[i] = str_c("k_", i, collapse = "")
+}
+```
+
+### Try model! 
+
+```{r}
+params_k = c(1:35)
+names(params_k) = k_char
+```
+
+```{r}
+#initial concentrations of reactants and products involved 
+# named vector of quantities 
+x_big = c()
+names(x_big) = all_spec
+```
+
+```{r}
+a_big = full_ks
+```
+
+```{r}
+# state change matrix
+mat_big = st_ch_mat
+
+out_c_fix <- ssa(x0 = x_big, a = a_big, 
+                      nu = mat_big, parms = parms_k, 
+                      tf = 0.0005, method = ssa.d())
+```
+
+
+
+### Reversible reaction state-change matrix 
+

@@ -1,0 +1,103 @@
+---
+title: "network_visualisation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("GillespieSSA")
+library("ggplot2")
+library("patchwork")
+library("ggpmisc")
+library("stringr")
+library("grid")
+library("gridExtra")
+library("igraph")
+load(file = "netw_plt_data.RData")
+```
+
+## Network visualisation
+
+```{r}
+### code used to create network nodes and edges ###
+# react and prod taken from other files!!! 
+
+reacs = prods = vector("list", 5)
+for (i in 1:5) reacs[[i]] = prods[[i]] = vector("list", 2)
+
+for (i in seq_along(prod)){
+    prods[[i]] = rep(prod[[i]], times = length(react[[i]]))
+    for (g in seq_along(react[[i]])){
+      reacs[[i]][[g]] = rep(react[[i]][g], times = length(prod[[i]]))
+    }
+#    reacs[[i]] = rep(react[[i]], times = length(prod[[i]]))
+}
+
+edges = data.frame(from = unlist(reacs), to = unlist(prods))
+nodes = data.frame(ID = unique(c(unlist(reacs), unlist(prods))))
+```
+
+
+```{r eval = F}
+### ADD TYPES IF NEEDED ()
+#match(trans_pairs$infectee.case, nodes$ID)
+nodes$type = trans_pairs$cats[match(nodes$ID, trans_pairs$patient_id)]
+nodes$type = factor(nodes$type, levels = c(levels(nodes$type), "Primary Source"))
+nodes$type[which(is.na(nodes$type) == T)] = "Primary Source"
+```
+
+
+```{r}
+netw_plt <- graph.data.frame(edges, nodes, directed = T)
+
+# net = simplify(net, remove.multiple = F, remove.loops = T)
+
+# different layouts
+l = layout_with_lgl(p1) # not bad
+l = layout_with_fr(p1)
+l = layout_with_dh(p1) # nice
+
+plot(netw_plt, 
+     edge.arrow.size = .5, 
+     edge.curved = .1, 
+     vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "black",
+     vertex.label.cex = 0.8, 
+     vertex.label.dist = 4,
+     layout = l)
+```
+
+```{r eval = F}
+# save plot
+png(
+  "network_vis.png",
+  width = 21,
+  height = 15,
+  units = "cm",
+  res = 800
+)
+plot(
+  netw_plt,
+  edge.arrow.size = .5,
+  edge.curved = .1,
+  vertex.size = 10,
+  edge.color = "skyblue",
+  vertex.color = "pink",
+  vertex.frame.color = "indianred",
+  vertex.label.color = "black",
+  vertex.label.cex = 0.8,
+  vertex.label.dist = 3,
+  layout = l
+)
+dev.off()
+```
+
+```{r}
+# save essential data
+# save(react, prod, edges, nodes, l, netw_plt, file = "netw_plt_data.RData")
+```
+
+
