@@ -14,7 +14,7 @@ library("stringr")
 library("grid")
 library("gridExtra")
 # SOURCE .RDATA FILE of Lias matrices (.csv)
-load(file = "lia_matrices.RData")
+load(file = "data/lia_matrices.RData")
 source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/plt_fnc.R") # plotting function
 ```
 
@@ -199,9 +199,9 @@ table = data.frame(propensity_fnc = out_rev_c_fix$args$a,
 ggsave(fig + (ggplot() + theme_void()) +
          annotate(geom = "table", x = 10, y = 2,
                   label = list(table), vjust = 0.45, hjust = 0.5),
-       file = paste0("rev_sim_works.png"), width = 30, height = 20, units = "cm")
+       file = paste0("images/rev_sim_works.png"), width = 30, height = 20, units = "cm")
 # ggsave(fig,
-#        file = paste0("rev_sim_works1.png"), width = 18, height = 13, units = "cm")
+#        file = paste0("images/rev_sim_works1.png"), width = 18, height = 13, units = "cm")
 ```
 
 
@@ -261,19 +261,19 @@ fwd[[7]] + rev_negl[[7]] + rev_eq[[7]] + fwd[[8]] + rev_negl[[8]] + rev_eq[[8]]
 Additionally, I recoded the state-change matrices from scratch in order to make sure that the code was bug-free. (In the process I wrote a couple of functions which should make it easier to model bigger networks, using the excel files which Stuart supplies as an input.) The to compare, the simulations yield the following results. 
 
 ```{r fig.cap="Lia's original simulation. It is strange because the chunk in the github files ran a simulation without k values in the chemical equations. It also had a reaction which replenished formic acid."}
-knitr::include_graphics("lia_sim.png")
+knitr::include_graphics("images/lia_sim.png")
 ```
 
 ```{r fig.cap="This simulation still had the replenishing formic acid reaction but it also had k values for the reactions."}
-knitr::include_graphics("lia_sim_2.png")
+knitr::include_graphics("images/lia_sim_2.png")
 ```
 
 ```{r fig.cap="I removed the sixth reaction and ran the same simulation as above."}
-knitr::include_graphics("lia_sim_seda.png")
+knitr::include_graphics("images/lia_sim_seda.png")
 ```
 
 ```{r fig.cap="Recoding all parameters, equations, and the state-change matrix, I got the following results."}
-knitr::include_graphics("seda_sim.png")
+knitr::include_graphics("images/seda_sim.png")
 ```
 
 
