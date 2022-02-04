@@ -109,3 +109,132 @@ dev.off()
 ```
 
 
+
+# Make reversible 
+
+```{r}
+data = read.csv(file = "data/rev_equal_backw_rate.csv")[-1]
+```
+
+```{r}
+t(data[8667,]) 
+#nodes$no_mol = 
+t(data[8667, match(colnames(data), c(nodes[,1]))])
+
+# this chunk matches the names of the colums in data to the names of the nodes then prints the data but in the order of the nodes
+# can be used to set node size 
+```
+
+```{r}
+nodes$n_mol = c(t(data[8667, match(colnames(data), c(nodes[,1]))]))
+nodes
+```
+
+
+```{r}
+netw_plt <- graph.data.frame(edges, nodes, directed = T)
+
+# net = simplify(net, remove.multiple = F, remove.loops = T)
+
+# different layouts
+l = layout_with_lgl(netw_plt) # not bad
+l = layout_with_fr(netw_plt)
+l = layout_with_dh(netw_plt) # nice
+
+E(netw_plt)$width <- E(netw_plt)$weight/6
+V(netw_plt)$size = ceiling(log10(V(netw_plt)$n_mol))*10
+
+# 10^(ceiling(log10(V(netw_plt)$n_mol)))
+
+plot(netw_plt, 
+     edge.arrow.size = .5, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 0.6, 
+     vertex.label.dist = 2,
+     layout = l)
+```
+
+```{r eval = F}
+# save plot
+png(
+  "images/network_vis_NODE.png",
+  width = 10,
+  height = 10,
+  units = "cm",
+  res = 800
+)
+plot(netw_plt, 
+     edge.arrow.size = .5, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 0.6, 
+     vertex.label.dist = 4.5,
+     layout = l)
+dev.off()
+```
+
+
+```{r}
+plot_function = function(x = T) {
+  plot(netw_plt, 
+     edge.arrow.size = .5, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 0.6, 
+     vertex.label.dist = 4.5,
+     layout = l)
+dev.off()
+} 
+```
+
+
+```{r}
+for (i in ceiling(seq(from = 1, to = 8834, length.out = 10))) {
+  nodes$n_mol = c(t(data[i, match(colnames(data), c(nodes[,1]))]))
+  V(netw_plt)$size = ceiling(log10(nodes$n_mol + 1))*10
+  do.call("png", list(paste0("images/network_vis_NODE_", i, ".png"),
+                      width = 10,
+                      height = 10,
+                      units = "cm",
+                      res = 800))
+  do.call("plot_function", args = list("T"))
+  #print(c(i, V(netw_plt)$size, nodes$n_mol))
+}
+# i = 4909 
+```
+
+
+```{r}
+library("animation")
+saveGIF({
+  for (i in ceiling(seq(from = 1, to = 8834, length.out = 50))) {
+  nodes$n_mol = c(t(data[i, match(colnames(data), c(nodes[,1]))]))
+  V(netw_plt)$size = ceiling(log10(nodes$n_mol + 1))*10
+  plot(netw_plt, 
+     edge.arrow.size = 1, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 2, 
+     vertex.label.dist = 4.5,
+     layout = l)
+}
+}, ani.width = 800, ani.height = 800, interval = 0.2)
+```
+
