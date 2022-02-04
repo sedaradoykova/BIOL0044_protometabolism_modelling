@@ -33,7 +33,11 @@ for (i in seq_along(prod)){
 #    reacs[[i]] = rep(react[[i]], times = length(prod[[i]]))
 }
 
-edges = data.frame(from = unlist(reacs), to = unlist(prods))
+# code the rates to be automatic too!! 
+rates = c(10, 10, 19.9, 19.9, 19.9, 19.9, 
+          23.5, 23.5, 0.061, 0.061, 0.061, 0.061, 0.869, 0.869)
+
+edges = data.frame(from = unlist(reacs), to = unlist(prods), weight = rates)
 nodes = data.frame(ID = unique(c(unlist(reacs), unlist(prods))))
 ```
 
@@ -47,19 +51,23 @@ nodes$type[which(is.na(nodes$type) == T)] = "Primary Source"
 ```
 
 
+
 ```{r}
 netw_plt <- graph.data.frame(edges, nodes, directed = T)
 
 # net = simplify(net, remove.multiple = F, remove.loops = T)
 
 # different layouts
-l = layout_with_lgl(p1) # not bad
-l = layout_with_fr(p1)
-l = layout_with_dh(p1) # nice
+l = layout_with_lgl(netw_plt) # not bad
+l = layout_with_fr(netw_plt)
+l = layout_with_dh(netw_plt) # nice
+
+E(netw_plt)$width <- E(netw_plt)$weight/6
+V(netw_plt)$
 
 plot(netw_plt, 
      edge.arrow.size = .5, 
-     edge.curved = .1, 
+     edge.curved = .1,
      vertex.size = 10,
      edge.color = "skyblue", 
      vertex.color = "pink", 
@@ -73,7 +81,7 @@ plot(netw_plt,
 ```{r eval = F}
 # save plot
 png(
-  "network_vis.png",
+  "network_vis_thicc.png",
   width = 21,
   height = 15,
   units = "cm",

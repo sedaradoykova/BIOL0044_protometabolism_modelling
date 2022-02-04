@@ -1,0 +1,183 @@
+---
+title: "network_visualisation"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library("GillespieSSA")
+library("ggplot2")
+library("patchwork")
+library("ggpmisc")
+library("stringr")
+library("grid")
+library("gridExtra")
+library("igraph")
+load(file = "netw_plt_data.RData")
+```
+
+## Network visualisation
+
+```{r}
+### code used to create network nodes and edges ###
+# react and prod taken from other files!!! 
+
+reacs = prods = vector("list", 5)
+for (i in 1:5) reacs[[i]] = prods[[i]] = vector("list", 2)
+
+for (i in seq_along(prod)){
+    prods[[i]] = rep(prod[[i]], times = length(react[[i]]))
+    for (g in seq_along(react[[i]])){
+      reacs[[i]][[g]] = rep(react[[i]][g], times = length(prod[[i]]))
+    }
+#    reacs[[i]] = rep(react[[i]], times = length(prod[[i]]))
+}
+
+# code the rates to be automatic too!! 
+rates = c(10, 10, 19.9, 19.9, 19.9, 19.9, 
+          23.5, 23.5, 0.061, 0.061, 0.061, 0.061, 0.869, 0.869)
+
+edges = data.frame(from = unlist(reacs), to = unlist(prods), weight = rates)
+nodes = data.frame(ID = unique(c(unlist(reacs), unlist(prods))))
+```
+
+
+
+```{r eval = F}
+### ADD TYPES IF NEEDED ()
+#match(trans_pairs$infectee.case, nodes$ID)
+nodes$type = trans_pairs$cats[match(nodes$ID, trans_pairs$patient_id)]
+nodes$type = factor(nodes$type, levels = c(levels(nodes$type), "Primary Source"))
+nodes$type[which(is.na(nodes$type) == T)] = "Primary Source"
+```
+
+```{r}
+data = read.csv(file = "data/rev_equal_backw_rate.csv")[-1]
+```
+
+```{r}
+t(data[8667,]) 
+#nodes$no_mol = 
+t(data[8667, match(colnames(data), c(nodes[,1]))])
+
+# this chunk matches the names of the colums in data to the names of the nodes then prints the data but in the order of the nodes
+# can be used to set node size 
+```
+
+```{r}
+nodes$n_mol = c(t(data[8667, match(colnames(data), c(nodes[,1]))]))
+nodes
+```
+
+
+```{r}
+netw_plt <- graph.data.frame(edges, nodes, directed = T)
+
+# net = simplify(net, remove.multiple = F, remove.loops = T)
+
+# different layouts
+l = layout_with_lgl(netw_plt) # not bad
+l = layout_with_fr(netw_plt)
+l = layout_with_dh(netw_plt) # nice
+
+E(netw_plt)$width <- E(netw_plt)$weight/6
+V(netw_plt)$size = ceiling(log10(V(netw_plt)$n_mol))*10
+
+# 10^(ceiling(log10(V(netw_plt)$n_mol)))
+
+plot(netw_plt, 
+     edge.arrow.size = .5, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 0.6, 
+     vertex.label.dist = 2,
+     layout = l)
+```
+
+```{r eval = F}
+# save plot
+png(
+  "images/network_vis_NODE.png",
+  width = 10,
+  height = 10,
+  units = "cm",
+  res = 800
+)
+plot(netw_plt, 
+     edge.arrow.size = .5, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 0.6, 
+     vertex.label.dist = 4.5,
+     layout = l)
+dev.off()
+```
+
+```{r}
+# save essential data
+# save(react, prod, edges, nodes, l, netw_plt, file = "netw_plt_data.RData")
+```
+
+```{r}
+plot_function = function(x = T) {
+  plot(netw_plt, 
+     edge.arrow.size = .5, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 0.6, 
+     vertex.label.dist = 4.5,
+     layout = l)
+dev.off()
+} 
+```
+
+
+```{r}
+for (i in ceiling(seq(from = 1, to = 8834, length.out = 10))) {
+  nodes$n_mol = c(t(data[i, match(colnames(data), c(nodes[,1]))]))
+  V(netw_plt)$size = ceiling(log10(nodes$n_mol + 1))*10
+  do.call("png", list(paste0("images/network_vis_NODE_", i, ".png"),
+                      width = 10,
+                      height = 10,
+                      units = "cm",
+                      res = 800))
+  do.call("plot_function", args = list("T"))
+  #print(c(i, V(netw_plt)$size, nodes$n_mol))
+}
+# i = 4909 
+```
+
+
+```{r}
+library("animation")
+saveGIF({
+  for (i in ceiling(seq(from = 1, to = 8834, length.out = 50))) {
+  nodes$n_mol = c(t(data[i, match(colnames(data), c(nodes[,1]))]))
+  V(netw_plt)$size = ceiling(log10(nodes$n_mol + 1))*10
+  plot(netw_plt, 
+     edge.arrow.size = 1, 
+     edge.curved = .1,
+     #vertex.size = 10,
+     edge.color = "skyblue", 
+     vertex.color = "pink", 
+     vertex.frame.color = "indianred", 
+     vertex.label.color = "darkblue",
+     vertex.label.cex = 2, 
+     vertex.label.dist = 4.5,
+     layout = l)
+}
+}, ani.width = 800, ani.height = 800, interval = 0.2)
+```
+
