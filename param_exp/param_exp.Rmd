@@ -1,0 +1,339 @@
+---
+output:
+  pdf_document: default
+---
+
+```{r setup, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, out.extra = "")
+library("GillespieSSA")
+library("ggplot2")
+library("patchwork")
+library("ggpmisc")
+library("stringr")
+library("pse")
+library("purrr")
+source(file = "../dependencies/plt_fnc.R") # plotting function
+```
+
+```{r}
+# initial concentrations of reactants and products involved 
+nmol <- 5000
+
+x_rev_c_fix <- c(
+    CO2 = nmol,
+    H2 = nmol,
+    formic_acid = 0,
+    formaldehyde = 0,
+    methanol = 0,
+    CO = 0,
+    acetic_acid = 0,
+    H2O = 0) 
+
+a_rev_c_fix <- c( # carbon fixation
+                  "k_1*CO2*H2",
+                  "k_1a*formic_acid",
+                  "k_2*formic_acid*H2",
+                  "k_2a*formaldehyde*H2O",
+                  "k_3*formaldehyde*H2",
+                  "k_3a*methanol",
+                  "k_4*methanol*CO",
+                  "k_4a*acetic_acid",
+                  "k_5*CO2*H2",
+                  "k_5a*CO*H2O")
+
+# state change matrix
+mat_rev_c_fix <- as.matrix(read.csv("../rev_c_fix/data/reversible_c_fix.csv", header = F)[-1])
+```
+
+```{r}
+# parameters
+parms_k <- c(k_1 = 10, k_1a = 10, 
+             k_2 = 19.9, k_2a = 19.9, 
+             k_3 = 23.5, k_3a = 23.5, 
+             k_4 = 0.869, k_4a = 0.869, 
+             k_5 = 0.061, k_5a = 0.061)
+
+#output
+out_rev_c_fix <- ssa(x0 = x_rev_c_fix, 
+                      a = a_rev_c_fix, 
+                      nu = mat_rev_c_fix,
+                      parms = parms_k, 
+                      tf = 0.0005, verbose = F, ignoreNegativeState = F)
+#cat("Output dim =", dim(out_rev_c_fix$data))
+
+rev_negl = plt_fnc(
+  to_plot = colnames(out_rev_c_fix[["data"]])[-1], 
+  data = out_rev_c_fix[["data"]], col = "darkred"
+  )
+#for (i in 1:16) cat("p1[[", i, "]] + ", sep = "")
+fig = rev_negl[[1]] + rev_negl[[2]] + rev_negl[[3]] + rev_negl[[4]] + rev_negl[[5]] + rev_negl[[6]] + rev_negl[[7]] + rev_negl[[8]]
+```
+
+```{r}
+fig
+```
+
+
+## Example 
+
+```{r}
+# input parameters 
+factors <- c("r", "K", "X0") # params 
+q <- c("qnorm", "qnorm", "qunif") # their distributions
+q.arg <- list( list(mean = 1.7, sd = 0.3), 
+               list(mean = 40, sd = 1),
+               list(min=1, max=50) ) # arguments 
+
+# model 
+oneRun <- function (r, K, Xo) { # takes in parameters 
+  X <- Xo # initialise model 
+  for (i in 0:20) { # simulate some data
+    X <- X + r * X * (1 - X / K)
+  }
+  return(X)
+}
+# wrapper funciton to run model 
+modelRun <- function(my.data) { # 
+  return(mapply(oneRun, my.data[, 1], my.data[, 2], my.data[, 3]))
+}
+
+# latin hypercube
+myLHS <- LHS(modelRun, factors, 200, q, q.arg, nboot=50)
+```
+
+
+```{r}
+# introduce time 
+Time <- 6
+oneRun <- function (r, K, Xo) {
+  X <- array()
+  
+  X[1] <- Xo
+  # Caution, X1 gets overwritten
+  for (i in 1:Time) {
+    Xl <- X[length(X)]
+    X[i] <- Xl + r * Xl * (1 - Xl / K)
+  }
+  return (X)
+}
+modelRun <- function (dados) {
+  mapply(oneRun, dados[, 1], dados[, 2], dados[, 3])
+}
+
+res.names <- paste("Time", 1:Time)
+myLHS <- LHS(modelRun, factors, 100, q, q.arg, res.names, nboot = 50)
+```
+
+```{r}
+mapply(oneRun, 1,2,3)
+```
+
+```{r}
+get.results(myLHS)
+```
+
+
+# PSE
+
+
+```{r}
+factors = names(parms_k) 
+q = rep("qunif", 10)
+q.arg = replicate(10, list(min = 1e-2, max = 1e3), simplify = F)
+
+rev_mod_run = function(k_1, k_1a, k_2, k_2a, k_3, 
+                       k_3a, k_4, k_4a, k_5, k_5a){
+  prms = c(k_1, k_1a, k_2, k_2a, k_3, k_3a, k_4, k_4a, k_5, k_5a)
+  names(prms) = names(parms_k)
+  return(ssa(
+      x0 = x_rev_c_fix,
+      a = a_rev_c_fix,
+      nu = mat_rev_c_fix,
+      parms = prms, # parms_k
+      tf = 0.0005,
+      ignoreNegativeState = F
+    ))
+}
+
+rev_mod = function(my_d) {
+  names(my_d) = names(parms_k)
+  return(mapply(rev_mod_run, my_d[1], my_d[2], my_d[3], 
+                my_d[4], my_d[5], my_d[6], 
+                my_d[7], my_d[8], my_d[9], my_d[10]))
+  }
+
+#parms_k
+myLHS <- LHS(rev_mod, factors, 200, nboot = 50) # q, q.arg, 
+
+
+#for (i in 1:10) cat("my_d[",i,"], ", sep= "")
+#str(myLHS)
+```
+
+```{r}
+ggplot(reshape2::melt(myLHS$data), aes(variable, 
+                                       value, 
+                                       color = variable)) + 
+  geom_point(size = 0.1) #+ 
+  # facet_wrap(~variable)
+```
+
+
+```{r}
+plotecdf(myLHS, stack = T)
+#plotscatter(myLHS, ylim = c(0, 1e5))
+
+```
+
+```{r}
+plotprcc(myLHS)
+```
+```{r}
+LHS1 <- LHS(rev_mod, N = 300, factors = factors, nboot = 50)
+plotprcc(LHS1)
+```
+
+
+```{r}
+LHS2 <- LHS(rev_mod, N = 60, factors = factors, 
+            repetitions = 5, nboot = 50)
+plotprcc(LHS2)
+```
+
+```{r}
+LHS3 <- LHS(rev_mod, N = 60, factors = factors, 
+            repetitions = 15, nboot = 100)
+plotprcc(LHS3)
+```
+
+```{r}
+r <- get.results(LHS3)
+sd(r) / mean(r) # global CV
+plotcv(LHS3)
+```
+
+
+
+```{r}
+pic(myLHS, nboot=40)
+```
+
+
+## fuckery 
+
+```{r}
+load("attempt1/attempt1.RData")
+```
+
+```{r}
+res = get.results(myLHS)
+```
+
+
+```{r}
+factors = names(parms_k) 
+q = rep("qunif", 10)
+q.arg = replicate(10, list(min = 1e-2, max = 1e3), simplify = F)
+res.names = colnames(out_rev_c_fix$data)[-1]
+
+rev_mod_run = function(k_1, k_1a, k_2, k_2a, k_3, 
+                       k_3a, k_4, k_4a, k_5, k_5a){
+  prms = c(k_1, k_1a, k_2, k_2a, k_3, k_3a, k_4, k_4a, k_5, k_5a)
+  names(prms) = names(parms_k)
+  run = ssa(
+      x0 = x_rev_c_fix,
+      a = a_rev_c_fix,
+      nu = mat_rev_c_fix,
+      parms = prms, # parms_k
+      tf = 0.0005,
+      ignoreNegativeState = F
+    )
+  return(as.array(run[["data"]][dim(run$data)[1],-1]))
+  #return(as.array(run$data)[dim(run$data)[1],]) # gets all rows
+  # can otherwise get inidividual columns out and will work for a given thing
+}
+
+
+
+rev_mod = function(my_d) {
+  names(my_d) = names(parms_k)
+  return(mapply(rev_mod_run, my_d[,1], my_d[,2], my_d[,3], 
+                my_d[,4], my_d[,5], my_d[,6], 
+                my_d[,7], my_d[,8], my_d[,9], my_d[,10]))
+  }
+
+#parms_k
+myLHS <- LHS(rev_mod, factors, 20, q, q.arg, 
+             nboot = 10, res.names = res.names) #  
+# was 
+
+#for (i in 1:10) cat("my_d[",i,"], ", sep= "")
+#str(myLHS)
+```
+
+```{r}
+mapply(rev_mod_run, 1,2,3,4,5,6,7,8,9,10)
+```
+
+
+```{r}
+as.array(out_rev_c_fix$data[dim(out_rev_c_fix$data)[1],-1])
+res.names
+```
+
+
+```{r}
+png("attempt1/ecdf1.png")
+plotecdf(myLHS, stack = T)#, xlim=c(0,100))
+dev.off()
+```
+
+```{r}
+pdf("scatter.pdf")
+plotscatter(myLHS)
+dev.off()
+```
+
+```{r}
+purrr::map(1:7, function(x) {
+  png(paste0("attempt1/prcc", x, ".png"))
+  plotprcc(myLHS, index.res = x)
+  dev.off()})
+```
+
+```{r}
+pic(myLHS, nboot=40)
+```
+
+
+# uncpouple analysis
+
+```{r}
+# uncouple analysis
+some_data = get.data(myLHS)
+
+coupledLHS = tell(uncoupledLHS, myresults)
+```
+
+
+```{r}
+barplot(some_data)
+```
+
+
+```{r}
+get.data(myLHS)
+get.results(myLHS)
+```
+
+
+# PLUE
+
+```{r}
+plue = PLUE(rev_mod, factors, 200, q, q.arg, nboot = 50)
+```
+
+```{r}
+
+```
+
