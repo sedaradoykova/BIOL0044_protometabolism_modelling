@@ -324,8 +324,10 @@ plotcv(LHS3)
 ```
 
 ```{r}
-plotcv(LHS2, stack = T)
+#plotcv(LHS2, stack = T)
+png("rep_boot/cv.png")
 plotcv(LHS2, stack = F)
+dev.off()
 # cv > pointwise cvs 
 # ==> uncertainty and sensitivity analyses will be appropriate
 ```
@@ -354,7 +356,7 @@ dev.off()
 ```{r}
 # examine the distribution of the model results
 png("rep_boot_more/ecdf1.png")
-plotecdf(LHS2, stack = T)#, xlim=c(0,100))
+plotecdf(LHS3, stack = T)#, xlim=c(0,100))
   # stack = F gives several panels
     # applicable to multiple response vars
 dev.off()
@@ -363,7 +365,7 @@ dev.off()
 ```{r}
 # scatterplot of the result as a function of each parameter
 pdf("rep_boot_more/scatter.pdf")
-plotscatter(LHS2)
+plotscatter(LHS3)
   # index.res = which columns (aka factors) to be plotted
 dev.off()
 ```
@@ -373,10 +375,15 @@ dev.off()
 # partial rank correlation coefficient 
 purrr::map(1:7, function(x) {
   png(paste0("rep_boot_more/prcc", x, ".png"))
-  plotprcc(LHS2, index.res = x)
+  plotprcc(LHS3, index.res = x)
   dev.off()})
 ```
 
+```{r}
+png("rep_boot_more/cv.png")
+plotcv(LHS3, stack = F)
+dev.off()
+```
 
 
 
