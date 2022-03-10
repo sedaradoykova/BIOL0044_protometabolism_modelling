@@ -1,10 +1,11 @@
 ---
 output:
-  pdf_document: default
+  html_document: default
 ---
 
 ```{r setup, warning=FALSE, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, out.extra = "")
+knitr::opts_chunk$set(echo = FALSE, message = FALSE,
+                      warning = FALSE, out.extra = "")
 library("GillespieSSA")
 library("ggplot2")
 library("patchwork")
@@ -14,6 +15,11 @@ library("pse")
 library("purrr")
 source(file = "../dependencies/plt_fnc.R") # plotting function
 ```
+
+
+# Reversible CO2 fixation with equal forward and backward rates 
+
+Writing the model out helps appreciate I/O relationships between `ssa()` and `LHS()`. 
 
 ```{r}
 # initial concentrations of reactants and products involved 
@@ -29,7 +35,7 @@ x_rev_c_fix <- c(
     acetic_acid = 0,
     H2O = 0) 
 
-a_rev_c_fix <- c( # carbon fixation
+a_rev_c_fix <- c( # reversible carbon fixation
                   "k_1*CO2*H2",
                   "k_1a*formic_acid",
                   "k_2*formic_acid*H2",
@@ -70,270 +76,307 @@ fig = rev_negl[[1]] + rev_negl[[2]] + rev_negl[[3]] + rev_negl[[4]] + rev_negl[[
 ```
 
 ```{r}
+# visualise results to check that sim is working 
 fig
 ```
 
 
-## Example 
-
-```{r}
-# input parameters 
-factors <- c("r", "K", "X0") # params 
-q <- c("qnorm", "qnorm", "qunif") # their distributions
-q.arg <- list( list(mean = 1.7, sd = 0.3), 
-               list(mean = 40, sd = 1),
-               list(min=1, max=50) ) # arguments 
-
-# model 
-oneRun <- function (r, K, Xo) { # takes in parameters 
-  X <- Xo # initialise model 
-  for (i in 0:20) { # simulate some data
-    X <- X + r * X * (1 - X / K)
-  }
-  return(X)
-}
-# wrapper funciton to run model 
-modelRun <- function(my.data) { # 
-  return(mapply(oneRun, my.data[, 1], my.data[, 2], my.data[, 3]))
-}
-
-# latin hypercube
-myLHS <- LHS(modelRun, factors, 200, q, q.arg, nboot=50)
-```
-
-
-```{r}
-# introduce time 
-Time <- 6
-oneRun <- function (r, K, Xo) {
-  X <- array()
-  
-  X[1] <- Xo
-  # Caution, X1 gets overwritten
-  for (i in 1:Time) {
-    Xl <- X[length(X)]
-    X[i] <- Xl + r * Xl * (1 - Xl / K)
-  }
-  return (X)
-}
-modelRun <- function (dados) {
-  mapply(oneRun, dados[, 1], dados[, 2], dados[, 3])
-}
-
-res.names <- paste("Time", 1:Time)
-myLHS <- LHS(modelRun, factors, 100, q, q.arg, res.names, nboot = 50)
-```
-
-```{r}
-mapply(oneRun, 1,2,3)
-```
-
-```{r}
-get.results(myLHS)
-```
-
 
 # PSE
 
-
-```{r}
-factors = names(parms_k) 
-q = rep("qunif", 10)
-q.arg = replicate(10, list(min = 1e-2, max = 1e3), simplify = F)
-
-rev_mod_run = function(k_1, k_1a, k_2, k_2a, k_3, 
-                       k_3a, k_4, k_4a, k_5, k_5a){
-  prms = c(k_1, k_1a, k_2, k_2a, k_3, k_3a, k_4, k_4a, k_5, k_5a)
-  names(prms) = names(parms_k)
-  return(ssa(
-      x0 = x_rev_c_fix,
-      a = a_rev_c_fix,
-      nu = mat_rev_c_fix,
-      parms = prms, # parms_k
-      tf = 0.0005,
-      ignoreNegativeState = F
-    ))
-}
-
-rev_mod = function(my_d) {
-  names(my_d) = names(parms_k)
-  return(mapply(rev_mod_run, my_d[1], my_d[2], my_d[3], 
-                my_d[4], my_d[5], my_d[6], 
-                my_d[7], my_d[8], my_d[9], my_d[10]))
-  }
-
-#parms_k
-myLHS <- LHS(rev_mod, factors, 200, nboot = 50) # q, q.arg, 
-
-
-#for (i in 1:10) cat("my_d[",i,"], ", sep= "")
-#str(myLHS)
-```
-
-```{r}
-ggplot(reshape2::melt(myLHS$data), aes(variable, 
-                                       value, 
-                                       color = variable)) + 
-  geom_point(size = 0.1) #+ 
-  # facet_wrap(~variable)
-```
-
-
-```{r}
-plotecdf(myLHS, stack = T)
-#plotscatter(myLHS, ylim = c(0, 1e5))
-
-```
-
-```{r}
-plotprcc(myLHS)
-```
-```{r}
-LHS1 <- LHS(rev_mod, N = 300, factors = factors, nboot = 50)
-plotprcc(LHS1)
-```
-
-
-```{r}
-LHS2 <- LHS(rev_mod, N = 60, factors = factors, 
-            repetitions = 5, nboot = 50)
-plotprcc(LHS2)
-```
-
-```{r}
-LHS3 <- LHS(rev_mod, N = 60, factors = factors, 
-            repetitions = 15, nboot = 100)
-plotprcc(LHS3)
-```
-
-```{r}
-r <- get.results(LHS3)
-sd(r) / mean(r) # global CV
-plotcv(LHS3)
-```
-
-
-
-```{r}
-pic(myLHS, nboot=40)
-```
-
-
-## fuckery 
+In the following sensitivity analysis, a Latin hypercube was used to vary parameters and examine the model outputs. 
+all the parameters were set to 
 
 ```{r}
 load("attempt1/attempt1.RData")
 ```
 
-```{r}
-res = get.results(myLHS)
-```
-
 
 ```{r}
-factors = names(parms_k) 
-q = rep("qunif", 10)
+# input parameters 
+# params to be explored
+factors = names(parms_k) # given as a vector
+# their probability density distributions 
+q = rep("qunif", 10) # given as a list 
+# the arguments to be supplied to the probability density distributions
+# given as a list of lists
 q.arg = replicate(10, list(min = 1e-2, max = 1e3), simplify = F)
+# names of results, to be used for plotting 
 res.names = colnames(out_rev_c_fix$data)[-1]
 
+
+# model 
+# this function defines one iteration/run of the model 
+# it takes SEPARTE vectors as arguments
+# this is because the LH output is a matrix with cols = params and rows = vals 
+### the arguments of this function would be modified to customise param exploration
 rev_mod_run = function(k_1, k_1a, k_2, k_2a, k_3, 
                        k_3a, k_4, k_4a, k_5, k_5a){
   prms = c(k_1, k_1a, k_2, k_2a, k_3, k_3a, k_4, k_4a, k_5, k_5a)
+  # since the GillespieR package takes in a named vector, make this here
   names(prms) = names(parms_k)
+  # make sure the names of the parameters match 
+  # with the input of the model run at the top of the document!
   run = ssa(
       x0 = x_rev_c_fix,
       a = a_rev_c_fix,
       nu = mat_rev_c_fix,
-      parms = prms, # parms_k
+      parms = prms, # parms_k 
+      # GillespieSSA package takes in a named vector of parameters 
       tf = 0.0005,
       ignoreNegativeState = F
     )
+  # return the final state of the system (minus time data)
   return(as.array(run[["data"]][dim(run$data)[1],-1]))
-  #return(as.array(run$data)[dim(run$data)[1],]) # gets all rows
-  # can otherwise get inidividual columns out and will work for a given thing
+  # can otherwise get individual columns out or some combination 
+  ### editing what is returned could help tailor the sensitivity 
+  ### analysis to a particular question of interest 
 }
 
 
-
+# wrapper function to run model 
+# the wrapper should run the model given a data frame 
+# with cols = params and rows = instances/values 
 rev_mod = function(my_d) {
-  names(my_d) = names(parms_k)
+  names(my_d) = names(parms_k) 
+  # NB name parmeters correctly, otherwise the model [ssa()] will not run 
   return(mapply(rev_mod_run, my_d[,1], my_d[,2], my_d[,3], 
                 my_d[,4], my_d[,5], my_d[,6], 
                 my_d[,7], my_d[,8], my_d[,9], my_d[,10]))
   }
 
-#parms_k
-myLHS <- LHS(rev_mod, factors, 20, q, q.arg, 
-             nboot = 10, res.names = res.names) #  
-# was 
-
-#for (i in 1:10) cat("my_d[",i,"], ", sep= "")
-#str(myLHS)
+# latin hypercube generation 
+myLHS <- LHS(
+  model = rev_mod, # model
+  factors = factors, # parameters explored
+  N = 20, # size of hypercube = number of samples generated 
+  q = q, # quantile functions 
+  q.arg = q.arg, # arguments for quantile functions
+  nboot = 10, # bootstrap replicates; used for PRCC calculations
+  res.names = res.names) # names used for visualisations
+  #, repetitions = 5) # number of repetitions
 ```
 
 ```{r}
-mapply(rev_mod_run, 1,2,3,4,5,6,7,8,9,10)
+# checking that output and res.named match 
+# as.array(out_rev_c_fix$data[dim(out_rev_c_fix$data)[1],-1])
+# res.names
 ```
 
 
-```{r}
-as.array(out_rev_c_fix$data[dim(out_rev_c_fix$data)[1],-1])
-res.names
-```
-
+## ECDF 
 
 ```{r}
+# examine the distribution of the model results
 png("attempt1/ecdf1.png")
 plotecdf(myLHS, stack = T)#, xlim=c(0,100))
+  # stack = F gives several panels
+    # applicable to multiple response vars
 dev.off()
 ```
 
+## Scatterplot
+
 ```{r}
-pdf("scatter.pdf")
+# scatterplot of the result as a function of each parameter
+pdf("attempt1/scatter.pdf")
 plotscatter(myLHS)
+  # index.res = which columns (aka factors) to be plotted
 dev.off()
 ```
 
+## PRCC 
+
+PRCC is not very appropriate for stochastic models; PIC would be more appropriate. 
+
 ```{r}
+# partial rank correlation coefficient 
+# assess the strength of the linear associations 
+# between the result and each input parameter 
+# after removing the linear effects of the other parameters
+### used for deterministic models! 
 purrr::map(1:7, function(x) {
   png(paste0("attempt1/prcc", x, ".png"))
   plotprcc(myLHS, index.res = x)
   dev.off()})
 ```
 
-```{r}
-pic(myLHS, nboot=40)
-```
+## PIC
 
-
-# uncpouple analysis
+Not easy to visualise. 
 
 ```{r}
-# uncouple analysis
-some_data = get.data(myLHS)
+# partial inclination coefficient
+# stochastic equivalent of PRCC
+# assess the sensitivity of the results to each parameter 
 
-coupledLHS = tell(uncoupledLHS, myresults)
-```
-
-
-```{r}
-barplot(some_data)
-```
-
-
-```{r}
-get.data(myLHS)
-get.results(myLHS)
-```
-
-
-# PLUE
-
-```{r}
-plue = PLUE(rev_mod, factors, 200, q, q.arg, nboot = 50)
+pic_an = pic(myLHS, nboot = 40)
+# plt = myLHS
+# plt$prcc = plts
+# plotprcc(plt)
 ```
 
 ```{r}
-
+colnames(myLHS$prcc[[1]]$PRCC)
+plts = lapply(pic_an, function(x) x$prcc = x$pic)
 ```
+
+
+
+## Plot parameters generated
+
+```{r}
+ggplot(reshape2::melt(myLHS$data), aes(value, 
+                                       fill = variable)) + 
+  geom_bar() + 
+  facet_wrap(~variable)
+```
+
+
+# PSE variations 
+
+N=20; rep5; nboot from 10 to 100 is 20 to 40 sec walltime. 
+  WITHOUT Qs
+
+N=20; rep5; nboot from 10 to 100 is
+  WITH Q i.e. with actual hypercube generation 
+Time difference of 5.935406 mins
+Time difference of 18.52188 mins
+
+
+
+```{r}
+LHS1 <- LHS(rev_mod, N = 300, factors = factors, nboot = 50)
+plotprcc(LHS1)
+```
+
+```{r}
+library("rbenchmark")
+```
+
+# Repetitions and boot
+
+```{r}
+# Time difference of 5.935406 mins
+start_time <- Sys.time()
+LHS2 <- LHS(rev_mod, N = 20, factors = factors, 
+            repetitions = 5, nboot = 10, 
+            q = q, q.arg = q.arg,
+            res.names = res.names)
+end_time <- Sys.time()
+end_time - start_time
+```
+```{r}
+png("lhs2.png", width = 25, height = 15, units = "cm", res = 300)
+plotprcc(LHS2)
+dev.off()
+```
+```{r}
+# examine the distribution of the model results
+png("rep_boot/ecdf1.png")
+plotecdf(LHS2, stack = T)#, xlim=c(0,100))
+  # stack = F gives several panels
+    # applicable to multiple response vars
+dev.off()
+```
+
+```{r}
+# scatterplot of the result as a function of each parameter
+pdf("rep_boot/scatter.pdf")
+plotscatter(LHS2)
+  # index.res = which columns (aka factors) to be plotted
+dev.off()
+```
+
+
+```{r}
+# partial rank correlation coefficient 
+purrr::map(1:7, function(x) {
+  png(paste0("rep_boot/prcc", x, ".png"))
+  plotprcc(LHS2, index.res = x)
+  dev.off()})
+```
+
+## CV
+
+Taken from the tutorial... 
+
+Repetitions allow crude estimate of the aleatory uncertainty by means of the coefficients of variation (cv). 
+
+**One caveat of using the cv is that it is only meaningful if the distribution
+of results for a given point in the parameter space is unimodal.**  
+
+Interpretation: 
+
+If the global cv is far greater than all of the pointwise cvs, this means that
+the epistemic variability is far greater than the aleatory variation for any point.
+In contrast, if the global cv appears to the left of the graph, thus being smaller
+than most pointwise cvs, this is probably a sign that the aleatory variation may be
+masking the effect of the parameter variation, and so the sensitivity analyses will
+probably be compromised.
+
+
+```{r}
+# example of getting cv
+r <- get.results(LHS3)
+sd(r) / mean(r) # global CV
+plotcv(LHS3)
+```
+
+```{r}
+plotcv(LHS2, stack = T)
+plotcv(LHS2, stack = F)
+# cv > pointwise cvs 
+# ==> uncertainty and sensitivity analyses will be appropriate
+```
+
+
+# Greater bootstrap 
+
+```{r}
+start_time <- Sys.time()
+LHS3 <- LHS(rev_mod, N = 20, factors = factors, 
+            repetitions = 5, nboot = 100, 
+            q = q, q.arg = q.arg,
+            res.names = res.names)
+end_time <- Sys.time()
+end_time - start_time
+```
+
+
+```{r}
+png("lhs3.png", width = 25, height = 15, units = "cm", res = 300)
+plotprcc(LHS3)
+dev.off()
+```
+
+
+```{r}
+# examine the distribution of the model results
+png("rep_boot_more/ecdf1.png")
+plotecdf(LHS2, stack = T)#, xlim=c(0,100))
+  # stack = F gives several panels
+    # applicable to multiple response vars
+dev.off()
+```
+
+```{r}
+# scatterplot of the result as a function of each parameter
+pdf("rep_boot_more/scatter.pdf")
+plotscatter(LHS2)
+  # index.res = which columns (aka factors) to be plotted
+dev.off()
+```
+
+
+```{r}
+# partial rank correlation coefficient 
+purrr::map(1:7, function(x) {
+  png(paste0("rep_boot_more/prcc", x, ".png"))
+  plotprcc(LHS2, index.res = x)
+  dev.off()})
+```
+
+
+
 

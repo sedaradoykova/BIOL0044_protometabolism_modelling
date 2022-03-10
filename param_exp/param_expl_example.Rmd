@@ -1,0 +1,135 @@
+
+```{r setup, warning=FALSE, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE, out.extra = "")
+library("GillespieSSA")
+library("ggplot2")
+library("patchwork")
+library("stringr")
+library("pse")
+library("purrr")
+```
+
+This example is taken from the `pse` package vignettes ("Sensitivity analyses: a brief tutorial with R package pse" and `vignette("mulitple")`). The code is commented to assist with understanding the syntax and input requirements as well as output features. This is the analysis used to explore deterministic models. The repetitions required for stochastic models are included deeper in the document. 
+
+# Tutorials
+- [Deterministic tutorial](https://cran.r-project.org/web/packages/pse/vignettes/pse_tutorial.pdf)
+- Stochastic tutorial: `vignette("mulitple")`. 
+
+
+## Example 
+
+```{r}
+# input parameters 
+# params to be explored
+factors <- c("r", "K", "X0") # given as a vector
+# their probability density distributions 
+q <- c("qnorm", "qnorm", "qunif") # given as a list 
+# the arguments to be supplied to the probability density distributions
+# given as a list of lists
+q.arg <- list( list(mean = 1.7, sd = 0.3), 
+               list(mean = 40, sd = 1),
+               list(min = 1, max = 50) ) 
+
+# model 
+# this function defines one iteration/run of the model 
+oneRun <- function(r, K, Xo) { # takes in parameters 
+  X <- Xo # initialise model 
+  for (i in 0:20) { # simulate some data
+    X <- X + r * X * (1 - X / K)
+  }
+  return(X) 
+}
+# wrapper function to run model 
+# the wrapper should run the model given a data frame 
+# with cols = params and rows = instances/values 
+modelRun <- function(my.data) { # 
+  return(mapply(oneRun, my.data[, 1], my.data[, 2], my.data[, 3]))
+}
+
+# latin hypercube generation 
+myLHS <- LHS(
+    model = modelRun, # model
+    factors = factors, # parameters explored
+    N = 200, # size of hypercube = number of samples generated 
+    q = q, # quantile functions 
+    q.arg = q.arg, # arguments for quantile functions
+    nboot = 50 # bootstrap replicates; used for PRCC calculations
+)
+```
+
+What if we are interested in multiple response variables? 
+
+```{r}
+# introduce time 
+Time <- 6
+res.names <- paste("Time", 1:Time) # this model captures 6 time points 
+
+# re-define model to return multiple responses 
+oneRun <- function(r, K, Xo) {
+  X <- array() # initialise array 
+  X[1] <- Xo
+  # Caution, X1 gets overwritten
+  for (i in 1:Time) {
+    Xl <- X[length(X)]
+    X[i] <- Xl + r * Xl * (1 - Xl / K)
+  }
+  return(X)
+}
+
+# wrapper function to loop over data frame of parameters
+modelRun <- function(dados) {
+  mapply(oneRun, dados[, 1], dados[, 2], dados[, 3])
+}
+
+# generate latin jupercube 
+myLHS <- LHS(modelRun, factors, 100, q, q.arg, res.names, nboot = 50)
+```
+
+
+```{r}
+# get simulation results
+get.results(myLHS)
+
+# get parameter values (from LH)
+get.data(myLHS)
+```
+
+
+## Understanding and visualising the output
+
+```{r}
+# examine the distribution of the model results
+plotecdf(myLHS, stack = T) # stack = F gives several panels
+                            # applicable to multiple response vars
+```
+
+```{r}
+# scatterplot of the result as a function of each parameter
+plotscatter(myLHS, index.res = 5)
+    # index.res = which columns (aka factors) to be plotted
+```
+```{r}
+# partial rank correlation coefficient 
+# assess the strength of the linear associations 
+# between the result and each input parameter 
+# after removing the linear effects of the other parameters
+### used for deterministic models! 
+plotprcc(myLHS)
+```
+
+```{r}
+# partial inclination coefficient
+# stochastic equivalent of PRCC
+# assess the sensitivity of the results to each parameter 
+pic(myLHS, nboot = 40)
+```
+
+## Uncouple analysis from LH generation 
+
+```{r}
+# uncouple analysis
+some_data = get.data(myLHS)
+
+coupledLHS = tell(uncoupledLHS, myresults)
+```
+
