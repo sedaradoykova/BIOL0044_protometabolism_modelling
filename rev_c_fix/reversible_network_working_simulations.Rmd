@@ -12,7 +12,7 @@ library("ggpmisc")
 library("stringr")
 # SOURCE .RDATA FILE of Lias matrices (.csv)
 load(file = "data/lia_matrices.RData")
-source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/plt_fnc.R") # plotting function
+source(file = "../dependencies/plt_fnc.R") # plotting function
 ```
 
 # Comparing simulations of irreversible and reversible $CO_{2}$ fixation reactions (simplified $CO_{2}$ fixation)
@@ -22,10 +22,10 @@ The output on the next page is generated after manually tweaking Lia's CO2 fixat
 | Forward reactants | Forward products | Propensity function | Parameters |
 |-------------------|-------------------|-------------------|------------|
 | $CO_{2},\ H_{2}$ | $formic\ acid$ | $k_{1}*CO_{2}*H_{2}$ | $k_{1} = 10$ |
-| $formic\ acid,\ H_{2}$ | $formaldehyde,\ H2O$ | $k_{2}*formic\ acid*H_{2}$ | $k_{2} = 19.9$ |
+| $formic\ acid,\ H_{2}$ | $formaldehyde,\ H_{2}O$ | $k_{2}*formic\ acid*H_{2}$ | $k_{2} = 19.9$ |
 | $formaldehyde,\ H_{2}$ | $methanol$ | $k_{3}*formaldehyde*H_{2}$ | $k_{3} = 23.5$ |
 | $methanol,\ CO$| $acetic\ acid$ | $k_{4}*methanol*CO$ | $k_{4} = 0.869$ |
-| $CO_{2},\ H_{2}$ | $CO,\ H_{2}$ | $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
+| $CO_{2},\ H_{2}$ | $CO,\ H_{2}O$ | $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
 
 
 
@@ -84,8 +84,8 @@ fig = fwd[[1]] + fwd[[2]] + fwd[[3]] + fwd[[4]] + fwd[[5]] + fwd[[6]] + fwd[[7]]
 #                                       out_c_fix$args$parms))
 # ggsave(fig + (ggplot() + theme_void()) +
 #          annotate(geom = "table", x = 5, y = 2,
-#                   label = list(table), vjust = 0.45, hjust = 0.5),
-#        file = paste0("images/lia_sim_tab.png"), width = 30, height = 20, units = "cm")
+#                   label = list(table), vjust = 0.45, hjust = 0.55),
+#        file = paste0("images/lia_sim_tab.png"), width = 20, height = 15, units = "cm")
 ```
 
 
@@ -118,7 +118,7 @@ a_rev_c_fix <- c( # carbon fixation
                   "k_5a*CO*H2O")
 
 # state change matrix
-mat_rev_c_fix <- as.matrix(read.csv("reversible_c_fix.csv", header = F)[-1])
+mat_rev_c_fix <- as.matrix(read.csv("data/reversible_c_fix.csv", header = F)[-1])
 ```
 
 
@@ -157,8 +157,8 @@ fig = rev_negl[[1]] + rev_negl[[2]] + rev_negl[[3]] + rev_negl[[4]] + rev_negl[[
 #                                       out_rev_c_fix$args$parms))
 # ggsave(fig + (ggplot() + theme_void()) +
 #          annotate(geom = "table", x = 10, y = 2,
-#                   label = list(table), vjust = 0.45, hjust = 0.5),
-#        file = paste0("images/rev_sim_neg.png"), width = 30, height = 20, units = "cm")
+#                   label = list(table), vjust = 0.47, hjust = 0.5),
+#        file = paste0("images/rev_sim_neg.png"), width = 25, height = 17, units = "cm")
 ```
 
 
@@ -215,11 +215,18 @@ fig = rev_eq[[1]] + rev_eq[[2]] + rev_eq[[3]] + rev_eq[[4]] + rev_eq[[5]] + rev_
 
 ```{r fig.height=3.5}
 #for (i in 1:8) cat("fwd[[", i, "]] + ","rev_negl[[", i, "]] + ", "rev_eq[[", i, "]] + ", sep = "")
+png(filename = "images/all_CO2_H2.png", 
+    res = 160, units = "cm", width = 15, height = 10)
 fwd[[1]] + rev_negl[[1]] + rev_eq[[1]] + fwd[[2]] + rev_negl[[2]] + rev_eq[[2]]
+dev.off()
+getwd()
 ```
 
 ```{r fig.height=3.5}
+png(filename = "images/all_formate_formaldehyde.png", 
+    res = 160, units = "cm", width = 15, height = 10)
 fwd[[3]] + rev_negl[[3]] + rev_eq[[3]] + fwd[[4]] + rev_negl[[4]] + rev_eq[[4]]
+dev.off()
 ```
 
 ```{r fig.height=3.5}
@@ -227,7 +234,10 @@ fwd[[5]] + rev_negl[[5]] + rev_eq[[5]] + fwd[[6]] + rev_negl[[6]] + rev_eq[[6]]
 ```
 
 ```{r fig.height=3.5}
+png(filename = "images/all_acetate_H2O.png", 
+    res = 160, units = "cm", width = 15, height = 10)
 fwd[[7]] + rev_negl[[7]] + rev_eq[[7]] + fwd[[8]] + rev_negl[[8]] + rev_eq[[8]]
+dev.off()
 ```
 
 \newpage 

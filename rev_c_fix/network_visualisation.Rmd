@@ -13,7 +13,7 @@ library("stringr")
 library("grid")
 library("gridExtra")
 library("igraph")
-load(file = "netw_plt_data.RData")
+load(file = "data/netw_plt_data.RData")
 ```
 
 ## Network visualisation

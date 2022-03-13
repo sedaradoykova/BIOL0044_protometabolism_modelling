@@ -12,8 +12,8 @@ library("ggpmisc")
 library("stringr")
 # SOURCE .RDATA FILE of Lias matrices (.csv)
 load(file = "data/lia_matrices.RData")
-source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/plt_fnc.R") # plotting function
-source(file = "C:/Users/sedar/Documents/Seda_Radoykova/UCL/1_BIOL0044 Th_Yr_Pr/stochastic_simulations/dependencies/react_prod_names.R")
+source(file = "../dependencies//plt_fnc.R") # plotting function
+source(file = "../dependencies/react_prod_names.R")
 #load("co2_fix_mat.RData")
 ```
 
@@ -125,6 +125,20 @@ co2_fix = plt_fnc(
   )
 ```
 
+| Reactants | Products | Propensity | Parameters | 
+| --- | --- | --- | --- | 
+| $CO_{2},\ H_{2}$ | $formic\ acid$ | $k_{1}*CO_{2}*H_{2}$ | $k_{1} = 10$ |
+| $formic\ acid,\ H_{2}$ | $formaldehyde,\ H2O$ | $k_{2}*formic\ acid*H_{2}$ | $k_{2} = 19.9$ |
+| $formaldehyde,\ H_{2}$ | $methanol$ | $k_{3}*formaldehyde*H_{2}$ | $k_{3} = 23.5$ |
+| $methanol,\ CO$ | $acetic\ acid$ | $k_{4}*methanol*CO$ | $k_{4} = 0.869$ |
+| $CO_{2},\ H_{2}$ | $CO,\ H_{2}O$ | $k_{5}*CO_{2}*H_{2}$ | $k_{5} = 0.061$ |
+
+```{r}
+purrr::pwalk(.l = list(react, prod, full_ks, k_char, params_k), .f = function(a,b,c,d,e) {
+  cat(paste0("| $", a, "$ | $", b, "$ | $", c, "$ | $", d, " = ", e, "$ |"), sep = "\n") }) 
+```
+
+
 
 ### Lia's simulations
 
@@ -183,7 +197,7 @@ fwd = plt_fnc(
   data = out_c_fix[["data"]], col = "black"
   )
 #for (i in 1:16) cat("p1[[", i, "]] + ", sep = "")
-# fwd[[1]] + fwd[[2]] + fwd[[3]] + fwd[[4]] + fwd[[5]] + fwd[[6]] + fwd[[7]] + fwd[[8]]
+fwd[[1]] + fwd[[2]] + fwd[[3]] + fwd[[4]] + fwd[[5]] + fwd[[6]] + fwd[[7]] + fwd[[8]]
 ```
 
 
@@ -193,9 +207,9 @@ table = data.frame(reaction = full_ks, parameters = str_c(k_char, " = ", params_
 
 fig = co2_fix[[1]] + co2_fix[[2]] + co2_fix[[3]] + co2_fix[[4]] + co2_fix[[5]] + co2_fix[[6]] + co2_fix[[7]] + co2_fix[[8]]
 
-ggsave(fig + annotate(geom = "table", x = 5, y = 2, label = list(table), 
-                      vjust = 0.3, hjust = -0.11),
-       file = paste0("images/seda_manual_sim.png"), width = 18, height = 13, units = "cm")
+# ggsave(fig + annotate(geom = "table", x = 5, y = 2, label = list(table), 
+#                       vjust = 0.3, hjust = -0.11),
+#        file = paste0("images/seda_manual_sim.png"), width = 18, height = 13, units = "cm")
 
 fig
 ```
