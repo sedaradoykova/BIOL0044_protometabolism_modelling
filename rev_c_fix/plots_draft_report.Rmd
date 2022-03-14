@@ -1,0 +1,64 @@
+
+
+```{r}
+#save(fwd, rev_negl, rev_eq, file = "data/NICE_SIM.RData")
+load("data/NICE_SIM.RData")
+#save(fwd_data, rev_negl_data, rev_eq_data, file = "data/all_sim_data.RData")
+load("data/all_sim_data.RData")
+```
+
+```{r}
+#deparse(substitute(all_data$fwd_data)) SUPER HELPFUL FOR DEBUGGING 
+
+all_data = list(fwd_data, rev_negl_data, rev_eq_data)
+all_data = lapply(all_data, as.data.frame)
+mods = c("Irrev", "Rev_negl", "Rev_eq")
+names(all_data) = mods
+
+
+
+ids = purrr::map2(names(all_data), 
+                  mods, 
+                  function(x, y) all_data[[x]][,"id"] = rep(y, nrow(all_data[[x]])))
+    #i$id = rep(x, times = all_data[[x]][1]))
+
+all_d = purrr::map2(all_data, ids, cbind)
+
+all_df = purrr::reduce(all_d, rbind)
+
+all_df_melt = reshape2::melt(all_df, id.vars = c("t", ".y[[i]]"))
+colnames(all_df_melt) = c("t", "Model", "Species", "n_mol")
+all_df_melt$Model = factor(all_df_melt$Model, 
+                           levels = mods)
+
+head(all_df_melt)
+```
+
+
+```{r}
+# mods = factor(c("Irrev", "Rev_negl", "Rev_eq"), 
+#               levels = c("Irrev", "Rev_negl", "Rev_eq"))
+# species = factor(levels(all_df_melt$Species), 
+#                  levels = levels(all_df_melt$Species))
+# labs = data.frame(tidyr::crossing(species, mods))
+# labs_vec = paste0(labs[,1], ", ", labs[,2]) 
+```
+
+
+```{r}
+png(filename = "images/all_ggplot.png", res = 160, units = "cm",
+    width = 30, height = 15)
+ggplot(all_df_melt, aes(t, n_mol)) +
+    facet_wrap(facets = c(vars(Model), vars(Species)),
+               scales = "free_y", nrow = 3, ncol = 8) +
+    geom_point(aes(col = Model), size = 0.5) +
+    scale_color_manual(values = c("black", "red", "blue")) +
+    theme_classic() +
+    xlab("Time / [arbitrary units]") + 
+    ylab("Number of molecules / [no unit]") + 
+    theme(axis.ticks.x = element_blank(),
+          axis.text.x = element_blank(),
+          legend.position = "none")
+dev.off()
+```
+

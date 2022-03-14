@@ -72,8 +72,11 @@ fwd = plt_fnc(
   to_plot = colnames(out_c_fix[["data"]])[-1], 
   data = out_c_fix[["data"]], col = "black"
   )
+
+fwd_data = out_c_fix[["data"]]
+
 #for (i in 1:16) cat("p1[[", i, "]] + ", sep = "")
-fig = fwd[[1]] + fwd[[2]] + fwd[[3]] + fwd[[4]] + fwd[[5]] + fwd[[6]] + fwd[[7]] + fwd[[8]]
+# fig = fwd[[1]] + fwd[[2]] + fwd[[3]] + fwd[[4]] + fwd[[5]] + fwd[[6]] + fwd[[7]] + fwd[[8]]
 ```
 
 
@@ -146,8 +149,10 @@ rev_negl = plt_fnc(
   to_plot = colnames(out_rev_c_fix[["data"]])[-1], 
   data = out_rev_c_fix[["data"]], col = "red"
   )
+
+rev_negl_data = out_rev_c_fix[["data"]]
 #for (i in 1:16) cat("p1[[", i, "]] + ", sep = "")
-fig = rev_negl[[1]] + rev_negl[[2]] + rev_negl[[3]] + rev_negl[[4]] + rev_negl[[5]] + rev_negl[[6]] + rev_negl[[7]] + rev_negl[[8]]
+# fig = rev_negl[[1]] + rev_negl[[2]] + rev_negl[[3]] + rev_negl[[4]] + rev_negl[[5]] + rev_negl[[6]] + rev_negl[[7]] + rev_negl[[8]]
 ```
 
 ```{r}
@@ -193,8 +198,10 @@ rev_eq = plt_fnc(
   to_plot = colnames(out_rev_c_fix[["data"]])[-1], 
   data = out_rev_c_fix[["data"]], col = "blue"
   )
+
+rev_eq_data = out_rev_c_fix[["data"]]
 #for (i in 1:16) cat("p1[[", i, "]] + ", sep = "")
-fig = rev_eq[[1]] + rev_eq[[2]] + rev_eq[[3]] + rev_eq[[4]] + rev_eq[[5]] + rev_eq[[6]] + rev_eq[[7]] + rev_eq[[8]]
+# fig = rev_eq[[1]] + rev_eq[[2]] + rev_eq[[3]] + rev_eq[[4]] + rev_eq[[5]] + rev_eq[[6]] + rev_eq[[7]] + rev_eq[[8]]
 ```
 
 ```{r}
@@ -219,7 +226,6 @@ png(filename = "images/all_CO2_H2.png",
     res = 160, units = "cm", width = 15, height = 10)
 fwd[[1]] + rev_negl[[1]] + rev_eq[[1]] + fwd[[2]] + rev_negl[[2]] + rev_eq[[2]]
 dev.off()
-getwd()
 ```
 
 ```{r fig.height=3.5}
@@ -230,7 +236,10 @@ dev.off()
 ```
 
 ```{r fig.height=3.5}
+png(filename = "images/all_methanol_CO.png", 
+    res = 160, units = "cm", width = 15, height = 10)
 fwd[[5]] + rev_negl[[5]] + rev_eq[[5]] + fwd[[6]] + rev_negl[[6]] + rev_eq[[6]]
+dev.off()
 ```
 
 ```{r fig.height=3.5}
@@ -239,6 +248,30 @@ png(filename = "images/all_acetate_H2O.png",
 fwd[[7]] + rev_negl[[7]] + rev_eq[[7]] + fwd[[8]] + rev_negl[[8]] + rev_eq[[8]]
 dev.off()
 ```
+
+```{r}
+# png(filename = "images/all.png", 
+#     res = 160, units = "cm", width = 13, height = 23)
+
+( fwd[[1]] | rev_negl[[1]] | rev_eq[[1]] ) /
+( fwd[[2]] | rev_negl[[2]] | rev_eq[[2]] ) /
+( fwd[[8]] | rev_negl[[8]] | rev_eq[[8]] ) /
+( fwd[[3]] | rev_negl[[3]] | rev_eq[[3]] ) /
+( fwd[[4]] | rev_negl[[4]] | rev_eq[[4]] ) / 
+( fwd[[5]] | rev_negl[[5]] | rev_eq[[5]] ) /
+( fwd[[6]] | rev_negl[[6]] | rev_eq[[6]] ) /
+( fwd[[7]] | rev_negl[[7]] | rev_eq[[7]] )
+
+# dev.off()
+```
+
+```{r}
+#save(fwd, rev_negl, rev_eq, file = "data/NICE_SIM.RData")
+load("data/NICE_SIM.RData")
+#save(fwd_data, rev_negl_data, rev_eq_data, file = "data/all_sim_data.RData")
+load("data/all_sim_data.RData")
+```
+
 
 \newpage 
 

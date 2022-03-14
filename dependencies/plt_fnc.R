@@ -25,9 +25,9 @@ plt_fnc = function(to_plot, data, n_plots = F, col = "black") {
             ggtitle(str_c(str_split(to_plot[i], "_")[[1]], collapse = " ")) +
             theme(axis.text.x = element_blank(), 
                   axis.ticks.x = element_blank(),
-                  axis.title.x = element_text(size = 11),
-                  axis.title.y = element_text(size = 11),
-                  plot.title = element_text(size = 12, face = "italic"))
+                  axis.title.x = element_text(size = 9),
+                  axis.title.y = element_text(size = 9),
+                  plot.title = element_text(size = 10, face = "italic"))
     }
     
     if (n_plots == T) cat("Output contains", length(to_plot), "plots.")
