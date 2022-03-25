@@ -1,10 +1,13 @@
 
 
-```{r}
+```{r, warning=FALSE, message=FALSE}
 #save(fwd, rev_negl, rev_eq, file = "data/NICE_SIM.RData")
 load("data/NICE_SIM.RData")
 #save(fwd_data, rev_negl_data, rev_eq_data, file = "data/all_sim_data.RData")
 load("data/all_sim_data.RData")
+library("ggplot2")
+library("magrittr")
+library("purrr")
 ```
 
 ```{r}
@@ -47,7 +50,7 @@ head(all_df_melt)
 
 ```{r}
 png(filename = "images/all_ggplot.png", res = 160, units = "cm",
-    width = 30, height = 15)
+    width = 35, height = 15)
 ggplot(all_df_melt, aes(t, n_mol)) +
     facet_wrap(facets = c(vars(Model), vars(Species)),
                scales = "free_y", nrow = 3, ncol = 8) +
