@@ -13,8 +13,12 @@ library("ggpmisc")
 library("stringr")
 library("pse")
 library("purrr")
+library("cowplot")
+library("rbenchmark")
 source(file = "../dependencies/plt_fnc.R") # plotting function
 ```
+
+This file contains an example of implementing a Latin-hypercube sampling based sensitivity analysis (SA) using the `pse` package framework. It starts out by spelling the reversible $CO_2$ fixation SSA model; generates a small LH sample to demonstrate the available functions. Then a more proper SA analysis is conducted (written up in the BIOL0044 project). Finally, a LH SA using the default settings is saved, as it generated interesting results. 
 
 
 # Reversible CO2 fixation with equal forward and backward rates 
@@ -163,7 +167,7 @@ myLHS <- LHS(
 ```
 
 
-# Visualise
+# Visualise example
 
 ## ECDF 
 
@@ -188,7 +192,7 @@ dev.off()
 
 ## PRCC 
 
-PRCC is not very appropriate for stochastic models; PIC would be more appropriate. 
+PRCC is not very appropriate for stochastic models; PIC would be more appropriate. That being said, PIC is not easily visualisable the way PRCC is... 
 
 ```{r}
 # partial rank correlation coefficient 
@@ -225,7 +229,7 @@ plts = lapply(pic_an, function(x) x$prcc = x$pic)
 
 
 
-# Proper PSE
+# Proper PSE - included in project writeup
 
 In the following sensitivity analysis, a Latin hypercube was used to vary parameters and examine the model outputs. 
 
@@ -235,7 +239,7 @@ All the parameters were set to be uniformly distributed, with range $[0.01,100]$
 load("LHS_proper/LHS_proper.RData")
 ```
 
-## Uncoupled
+## Check LH
 
 This code helps check if the Latin hypercube samples behave as expected. 
 
@@ -250,7 +254,7 @@ res.names = colnames(out_rev_c_fix$data)[-1]
 ## LHS proper SA
 
 ```{r}
-library("rbenchmark")
+# benchmark PSE process time 
 start_time <- Sys.time()
 LHS_proper = LHS(model = rev_mod, factors = factors, 
                  N = 50, q = q, q.arg = q.arg, 
@@ -272,25 +276,62 @@ ggplot(reshape2::melt(LHS_proper$data), aes(value,
 ```
 
 ```{r}
+# check data
 #get.data(LHS_proper)
-```
 
-
-```{r}
-png("LHS_proper/prcc_proper.png", res = 144, width = 1200, height = 800)
-plotprcc(LHS_proper, ylab = res.names)
-dev.off()
-```
-
-```{r}
+# save data 
 # save(LHS_proper, file = "attempt2/LHS_proper.RData")
 ```
+
 
 # Plots 
 
 ```{r}
+# prcc 
+png("LHS_proper/proper_prcc.png", res = 144, width = 1200, height = 800)
+plotprcc(LHS_proper, ylab = res.names)
+dev.off()
+```
+
+
+```{r}
+# scatterplot of the result as a function of each parameter
+p = 0
+for (i in seq(1,10,by = 2)) {
+  p = p + 1
+  png(paste0("LHS_proper/scatter",p,".png"),
+  plotscatter(LHS_proper, index.data = c(i, i + 1)))
+  dev.off()
+}
+```
+
+```{r}
+# scatterplot of the result as a function of each parameter
+plotss_scatter = map(seq(1,10,by = 2), function(x)
+  return(eval(parse(
+    text = paste0(
+      "~{plotscatter(LHS_proper, index.data = c(", 
+      paste(x), 
+      ", ", paste(x + 1),"))}"
+    )))))
+```
+
+```{r}
+# scatter plots
+png("LHS_proper/proper_scatters.png", res = 100, width = 500, height = 2200)
+plot_grid(
+  ggdraw(plotss_scatter[[1]]),
+  ggdraw(plotss_scatter[[2]]),
+  ggdraw(plotss_scatter[[3]]),
+  ggdraw(plotss_scatter[[4]]),
+  ggdraw(plotss_scatter[[5]]),
+  nrow = 5, ncol = 1)
+dev.off()
+```
+
+
+```{r}
 # examine the distribution of the model results
-library("cowplot")
 plotss = map(1:8, function(x)
   return(eval(parse(
     text = paste0(
@@ -302,7 +343,6 @@ plotss = map(1:8, function(x)
     )
   ))))
 
-
 # for (i in 1:8) {
 #   cat(paste0("ggdraw(plotss[[",i,"]]), "))
 #   ggdraw(plotss[[i]])
@@ -310,7 +350,8 @@ plotss = map(1:8, function(x)
 ```
 
 ```{r}
-png("LHS_proper/proper_ecdfs.png", res = 100, width = 1200, height = 600)
+# ecdfs 
+png("LHS_proper/proper_ecdfs.png", res = 100, width = 1000, height = 600)
 plot_grid(
   ggdraw(plotss[[1]]),
   ggdraw(plotss[[2]]),
@@ -325,32 +366,82 @@ dev.off()
 ```
 
 
-
 ```{r}
-# scatterplot of the result as a function of each parameter
-p = 0
-for (i in seq(1,10,by = 2)) {
-  p = p + 1
-  png(paste0("LHS_proper/scatter",p,".png"),
-      width = 1200, height = 800, res = 144)
-  plotscatter(LHS_proper, index.data = c(i, i + 1))
-  dev.off()
-}
-```
-
-
-
-```{r}
-# example of getting cv
+# example of getting globsl cv (coefficient of)
 r <- get.results(LHS_proper)
 sd(r) / mean(r) # global CV
-plotcv(LHS_proper)
+plotcv(LHS_proper, stack = F, index.res = 1)
+```
+
+```{r}
+plotss_cv = map(1:8, function(x)
+  return(eval(parse(
+    text = paste0(
+      "~{plotcv(LHS_proper, stack = F, index.res = ", paste(x),")}"
+    )
+  ))))
+```
+
+```{r}
+library("cowplot")
+png("LHS_proper/proper_cv.png", res = 100, width = 1000, height = 600)
+plot_grid(
+  ggdraw(plotss[[1]]),
+  ggdraw(plotss[[2]]),
+  ggdraw(plotss[[3]]),
+  ggdraw(plotss[[4]]),
+  ggdraw(plotss[[5]]),
+  ggdraw(plotss[[6]]),
+  ggdraw(plotss[[7]]),
+  ggdraw(plotss[[8]]), 
+  nrow = 2, ncol = 4, labels = res.names, vjust = 3.5)
+dev.off()
 ```
 
 
+```{r}
+# mixed plot with ecdfs and cvs one below the other 
+plotss = map(1:8, function(x)
+  return(eval(parse(
+    text = paste0(
+      "~{plotecdf(LHS_proper, stack = F, xlab = \"ecdf\", index.res = ",
+      paste(x), ")}"
+    )
+  ))))
+
+plotss_cv = map(1:8, function(x)
+  return(eval(parse(
+    text = paste0(
+      "~{plotcv(LHS_proper, stack = F, index.res = ", paste(x),")}"
+    )
+  ))))
+
+res.names.new = c(rep(res.names[1:4], 2), rep(res.names[5:8], 2))
+
+png("LHS_proper/proper_ecdf_cv.png", res = 100, width = 1000, height = 1200)
+plot_grid(
+  ggdraw(plotss[[1]]),
+  ggdraw(plotss[[2]]),
+  ggdraw(plotss[[3]]),  
+  ggdraw(plotss[[4]]),
+  ggdraw(plotss_cv[[1]]),
+  ggdraw(plotss_cv[[2]]),
+  ggdraw(plotss_cv[[3]]),
+  ggdraw(plotss_cv[[4]]),
+  ggdraw(plotss[[5]]),
+  ggdraw(plotss[[6]]),
+  ggdraw(plotss[[7]]),
+  ggdraw(plotss[[8]]),
+  ggdraw(plotss_cv[[5]]),
+  ggdraw(plotss_cv[[6]]),
+  ggdraw(plotss_cv[[7]]),
+  ggdraw(plotss_cv[[8]]),
+  nrow = 4, ncol = 4, labels = res.names.new, vjust = 3.5)
+dev.off()
+```
 
 ```{r}
-#plotcv(LHS2, stack = T)
+# cv 
 png("LHS_proper/proper_cv.png", res = 144, width = 1000, height = 600)
 plotcv(LHS_proper, stack = F)
 dev.off()
@@ -362,17 +453,19 @@ dev.off()
 
 # LHS1
 
-LHS1 is using the default settings, some interesting results were generated. 
+LHS1 is using the default settings, some interesting results were generated. Parameters seem to have been varied between 0 and 1; drawn from a uniform distribution as per the documentation. Can apply same visualisation as above to examine them. 
 
 ```{r}
 #LHS1 <- LHS(rev_mod, N = 50, repetitions = 10, factors = factors, nboot = 50)
+#save(LHS1, file = "attempt2/LHS1.RData")
 load("LHS_proper/LHS1.RData")
+```
 
-png("LHS_proper/prcc.png", res = 144, width = 1200, height = 900)
+```{r}
+# prcc
+png("LHS_proper/LHS1_prcc.png", res = 144, width = 1200, height = 900)
 plotprcc(LHS1, ylab = res.names)
 dev.off()
-
-#save(LHS1, file = "attempt2/LHS1.RData")
 ```
 
 ```{r}
@@ -383,8 +476,5 @@ dev.off()
 # get.noutputs(LHS1)
 # get.results(LHS1)
 ```
-
-
-
 
 
