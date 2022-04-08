@@ -317,7 +317,7 @@ ecdfs_cols = ggplot(res_df, aes(value, color = factor(variable))) +
 ```{r}
 # fix xlab ka = kb 
 LHS_proper$factors = names(parms_k)
-LHS_proper$prcc %>% lapply(X = ., FUN = function(x) rownames(x[[1]]) = names(parms_k))
+#LHS_proper$prcc %>% lapply(X = ., FUN = function(x) rownames(x[[1]]) = names(parms_k))
 ```
 
 
@@ -408,7 +408,61 @@ ggsave("LHS_proper/ecdfs_cols.png", ecdfs_cols,
        width = 1000, height = 600)
 ```
 
+```{r}
+## ggplot scattter 
+plotscatter(LHS_proper, index.data = c(1,2), )
 
+# dat = data.frame(get.results(LHS_proper))
+# colnames(dat) = res.names %>% stringr::str_replace(., "_", " ")
+# res_df = reshape2::melt(dat)
+params_lhs = data.frame(get.data(LHS_proper))
+prm_lhs_df = reshape2::melt(params_lhs)
+colnames(prm_lhs_df) = c("parameter", "param_val")
+colnames(res_df) = c("molecule", "no_mol")
+
+dat
+res_df
+params_lhs
+prm_lhs_df
+
+
+all_lms = data.frame(cbind(dat, params_lhs))
+all_lms = reshape2::melt(all_lms, id.vars = colnames(params_lhs))
+colnames(all_lms) = c(colnames(params_lhs), "molecule", "no_mol")
+all_lms = reshape2::melt(all_lms, id.vars = c("molecule", "no_mol"))
+colnames(all_lms) = c("molecule", "no_mol", "parameter", "param_val")
+
+all_lms$molecule = stringr::str_replace(all_lms$molecule, "\\.", " ")
+all_lms$molecule = factor(all_lms$molecule, levels = unique(all_lms$molecule))
+```
+
+
+```{r}
+png("LHS_proper/proper_scatters_GG.png", res = 95, width = 1200, height = 1400)
+ggplot(all_lms, aes(x = param_val, y = no_mol, color = molecule)) +
+    geom_point(size = 0.5) +
+    geom_smooth(method = 'lm', se = F) +
+#    facet_grid(rows = vars(molecule), cols = vars(parameter), scales = "free", switch = "y") + 
+#    facet_grid(rows = vars(parameter), cols = vars(molecule), scales = "free_y") + 
+    facet_wrap(parameter ~ molecule, scales = "free_y", ncol = 8) + 
+#    facet_wrap(molecule ~ parameter, scales = "free_y", ncol = 5) + 
+    theme(strip.text = element_text(size = 8), 
+          strip.text.y = element_text(size = 8),
+          strip.text.x = element_text(size = 8)) + 
+    theme_cowplot() +
+    scale_colour_manual(values = cols) + 
+    labs(x = "Parameter value / [no units]", y = "Number of molecules / [no units]") + 
+    guides(color = guide_none()) 
+dev.off()
+```
+
+```{r}
+df = data.frame(molecule = dat[,1], k1 = params_lhs[,1])
+
+ggplot(df, aes(x = k1, y = molecule)) +
+  geom_point(size = 0.75) +
+  geom_smooth(method = 'lm', se = F)
+```
 
 ```{r}
 # examine the distribution of the model results
@@ -464,6 +518,7 @@ plotss_cv = map(1:8, function(x)
 
 ```{r}
 plotcv
+
 ```
 
 
