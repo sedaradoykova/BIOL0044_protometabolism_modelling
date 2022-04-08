@@ -41,15 +41,15 @@ x_rev_c_fix <- c(
 
 a_rev_c_fix <- c( # reversible carbon fixation
                   "k_1*CO2*H2",
-                  "k_1a*formic_acid",
+                  "k_1b*formic_acid",
                   "k_2*formic_acid*H2",
-                  "k_2a*formaldehyde*H2O",
+                  "k_2b*formaldehyde*H2O",
                   "k_3*formaldehyde*H2",
-                  "k_3a*methanol",
+                  "k_3b*methanol",
                   "k_4*methanol*CO",
-                  "k_4a*acetic_acid",
+                  "k_4b*acetic_acid",
                   "k_5*CO2*H2",
-                  "k_5a*CO*H2O")
+                  "k_5b*CO*H2O")
 
 # state change matrix
 mat_rev_c_fix <- as.matrix(read.csv("../rev_c_fix/data/reversible_c_fix.csv", header = F)[-1])
@@ -57,11 +57,11 @@ mat_rev_c_fix <- as.matrix(read.csv("../rev_c_fix/data/reversible_c_fix.csv", he
 
 ```{r}
 # parameters
-parms_k <- c(k_1 = 10, k_1a = 10, 
-             k_2 = 19.9, k_2a = 19.9, 
-             k_3 = 23.5, k_3a = 23.5, 
-             k_4 = 0.869, k_4a = 0.869, 
-             k_5 = 0.061, k_5a = 0.061)
+parms_k <- c(k_1 = 10, k_1b = 10, 
+             k_2 = 19.9, k_2b = 19.9, 
+             k_3 = 23.5, k_3b = 23.5, 
+             k_4 = 0.869, k_4b = 0.869, 
+             k_5 = 0.061, k_5b = 0.061)
 
 #output
 out_rev_c_fix <- ssa(x0 = x_rev_c_fix, 
@@ -106,9 +106,9 @@ res.names = colnames(out_rev_c_fix$data)[-1]
 # it takes SEPARTE vectors as arguments
 # this is because the LH output is a matrix with cols = params and rows = vals 
 ### the arguments of this function would be modified to customise param exploration
-rev_mod_run = function(k_1, k_1a, k_2, k_2a, k_3, 
-                       k_3a, k_4, k_4a, k_5, k_5a){
-  prms = c(k_1, k_1a, k_2, k_2a, k_3, k_3a, k_4, k_4a, k_5, k_5a)
+rev_mod_run = function(k_1, k_1b, k_2, k_2b, k_3, 
+                       k_3b, k_4, k_4b, k_5, k_5b){
+  prms = c(k_1, k_1b, k_2, k_2b, k_3, k_3b, k_4, k_4b, k_5, k_5b)
   # since the GillespieR package takes in a named vector, make this here
   names(prms) = names(parms_k)
   # make sure the names of the parameters match 
@@ -264,15 +264,17 @@ end_time - start_time
 # Time difference of 14.81232 mins
 ```
 
+```{r}
+save(LHS_proper, file = "lhs2.RData")
+```
 
 
 ## Plot parameters generated
 
 ```{r}
-ggplot(reshape2::melt(LHS_proper$data), aes(value, 
-                                       fill = variable)) + 
-  geom_bar() + 
-  facet_wrap(~variable)
+ggplot(reshape2::melt(LHS_proper$data), aes(value, fill = variable)) +
+    geom_bar() +
+    facet_wrap( ~ variable)
 ```
 
 ```{r}
@@ -283,14 +285,85 @@ ggplot(reshape2::melt(LHS_proper$data), aes(value,
 # save(LHS_proper, file = "attempt2/LHS_proper.RData")
 ```
 
+# Plots used in paper 
 
-# Plots 
+```{r}
+# coloring ecdf plots - also using ggplot instead 
+plotecdf(LHS_proper, stack = F, xlab = res.names[1], index.res = 1, lty = 2, col = "blue")
+
+dat = as.vector(get.results(LHS_proper)[, 1])
+g <- rep(1, each = dim(LHS_proper$res)[1])
+Ecdf(dat, group = g, col = cols[1], xlab = res.names[1])
+```
+
+```{r}
+cols = rcartocolor::carto_pal(8, "Safe")
+# ggplot version 
+dat = data.frame(get.results(LHS_proper))
+colnames(dat) = res.names %>% stringr::str_replace(., "_", " ")
+res_df = reshape2::melt(dat)
+ecdfs_cols = ggplot(res_df, aes(value, color = factor(variable))) +
+    stat_ecdf(geom = "line", size = 1.25) +
+    facet_wrap(~ variable, ncol = 4, scales = "free_x") +
+    scale_colour_manual(values = cols) +
+    theme_cowplot() +
+    labs(y = "Proportion <= x / [no unit]", x = "Number of molecules / [no unit]") +
+    guides(color = guide_legend("Compound"))
+```
+
+
+# Plots - general
+
+```{r}
+# fix xlab ka = kb 
+LHS_proper$factors = names(parms_k)
+LHS_proper$prcc %>% lapply(X = ., FUN = function(x) rownames(x[[1]]) = names(parms_k))
+```
+
 
 ```{r}
 # prcc 
 png("LHS_proper/proper_prcc.png", res = 144, width = 1200, height = 800)
-plotprcc(LHS_proper, ylab = res.names)
+plotprcc(LHS_proper, ylab = res.names) # color every reaction possible 
 dev.off()
+```
+
+```{r}
+#LHS_proper$prcc[[8]]
+molecule = rep(res.names, each = 10) %>% stringr::str_replace(., "_", " ")
+all_data = lapply(LHS_proper$prcc, function(x) x$PRCC) %>% reduce(.f = rbind)
+all_data$param = factor(row.names(all_data)[1:10])
+all_data$molecule = factor(molecule, levels = unique(molecule))
+rownames(all_data) = NULL
+all_data = as.data.frame(all_data)
+colnames(all_data)[4:5] = c("min_ci", "max_ci")
+labs_k = sapply(all_data$param[seq(1,10,2)], function(x) c(paste(x), "")) %>% as.vector 
+```
+
+```{r}
+png("LHS_proper/proper_prcc_GG.png", res = 144, width = 1200, height = 800)
+ggplot(all_data, aes(x = as.factor(param), y = original,
+                     ymin = min_ci, ymax = max_ci, color = molecule)) + 
+    geom_pointrange(shape = 15) + 
+    geom_hline(yintercept = 0, lty = 2) + 
+    facet_wrap(~factor(molecule), nrow = 2) + 
+    theme_cowplot() +
+    scale_colour_manual(values = cols) +
+    labs(y = "PRCC", x = "Reaction parameter") +
+    guides(color = guide_legend("Compound")) + 
+    theme(axis.text.x = element_text(size = 10)) + 
+    scale_x_discrete(labels = labs_k)
+dev.off()
+```
+
+
+```{r}
+sapply(all_data, typeof)  
+```
+
+
+```{r}
+plotprcc(LHS_proper, ylab = res.names, col = cols[1], index.res = 1, main = "")
 ```
 
 
@@ -328,6 +401,13 @@ plot_grid(
   nrow = 5, ncol = 1)
 dev.off()
 ```
+
+```{r}
+ggsave("LHS_proper/ecdfs_cols.png", ecdfs_cols, 
+       dpi = 100, units = "px", 
+       width = 1000, height = 600)
+```
+
 
 
 ```{r}
@@ -381,6 +461,11 @@ plotss_cv = map(1:8, function(x)
     )
   ))))
 ```
+
+```{r}
+plotcv
+```
+
 
 ```{r}
 library("cowplot")

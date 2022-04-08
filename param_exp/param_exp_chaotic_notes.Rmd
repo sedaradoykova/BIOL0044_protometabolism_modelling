@@ -290,12 +290,11 @@ dev.off()
 ```{r}
 #LHS1 <- LHS(rev_mod, N = 50, repetitions = 10, factors = factors, nboot = 50)
 load("attempt2/LHS1.RData")
+#save(LHS1, file = "attempt2/LHS1.RData")
 
 png("attempt2/prcc.png", res = 144, width = 1200, height = 900)
 plotprcc(LHS1, ylab = res.names)
 dev.off()
-
-#save(LHS1, file = "attempt2/LHS1.RData")
 ```
 
 ```{r}

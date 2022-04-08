@@ -15,11 +15,11 @@ library("purrr")
 
 all_data = list(fwd_data, rev_negl_data, rev_eq_data)
 all_data = lapply(all_data, as.data.frame)
-mods = c("Irrev", "Rev_negl", "Rev_eq")
+mods = c("Irrev", "Rev: negl", "Rev: equal")
 names(all_data) = mods
 
 
-
+# create ids of model type 
 ids = purrr::map2(names(all_data), 
                   mods, 
                   function(x, y) all_data[[x]][,"id"] = rep(y, nrow(all_data[[x]])))
@@ -31,8 +31,10 @@ all_df = purrr::reduce(all_d, rbind)
 
 all_df_melt = reshape2::melt(all_df, id.vars = c("t", ".y[[i]]"))
 colnames(all_df_melt) = c("t", "Model", "Species", "n_mol")
-all_df_melt$Model = factor(all_df_melt$Model, 
-                           levels = mods)
+all_df_melt$Model = factor(all_df_melt$Model, levels = mods)
+all_df_melt$Species = stringr::str_replace(all_df_melt$Species, "_", " ")
+all_df_melt$Species = factor(all_df_melt$Species, levels = unique(all_df_melt$Species))
+
 
 head(all_df_melt)
 ```
@@ -49,19 +51,21 @@ head(all_df_melt)
 
 
 ```{r}
-png(filename = "images/all_ggplot.png", res = 160, units = "cm",
-    width = 35, height = 15)
-ggplot(all_df_melt, aes(t, n_mol)) +
+# uniform theme
+cols = rcartocolor::carto_pal(8, "Safe")
+png(filename = "images/all_ggplot.png", res = 160, units = "cm", width = 35, height = 15)
+ggplot(all_df_melt, aes(t, n_mol, color = Species)) +
     facet_wrap(facets = c(vars(Model), vars(Species)),
                scales = "free_y", nrow = 3, ncol = 8) +
-    geom_point(aes(col = Model), size = 0.5) +
-    scale_color_manual(values = c("black", "red", "blue")) +
-    theme_classic() +
+    geom_point(size = 0.6) +
+    scale_colour_manual(values = cols) +
+    #scale_color_manual(values = c("black", "red", "blue")) +
+    theme_cowplot() +
     xlab("Time / [arbitrary units]") + 
     ylab("Number of molecules / [no unit]") + 
     theme(axis.ticks.x = element_blank(),
           axis.text.x = element_blank(),
-          legend.position = "none")
+          legend.position = "none") + aes(fill = factor(Model))
 dev.off()
 ```
 
