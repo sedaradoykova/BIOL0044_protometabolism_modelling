@@ -308,7 +308,7 @@ ecdfs_cols = ggplot(res_df, aes(value, color = factor(variable))) +
     scale_colour_manual(values = cols) +
     theme_cowplot() +
     labs(y = "Proportion <= x / [no unit]", x = "Number of molecules / [no unit]") +
-    guides(color = guide_legend("Compound"))
+    guides(color = guide_none()) 
 ```
 
 
@@ -350,7 +350,7 @@ ggplot(all_data, aes(x = as.factor(param), y = original,
     theme_cowplot() +
     scale_colour_manual(values = cols) +
     labs(y = "PRCC", x = "Reaction parameter") +
-    guides(color = guide_legend("Compound")) + 
+    guides(color = guide_none()) + 
     theme(axis.text.x = element_text(size = 10)) + 
     scale_x_discrete(labels = labs_k)
 dev.off()
@@ -516,10 +516,76 @@ plotss_cv = map(1:8, function(x)
   ))))
 ```
 
-```{r}
-plotcv
 
+```{r}
+# cv source code 
+plotcv()
+
+cv <- function(x, ...) {
+    if (mean(x, ...) == 0) return(0)
+    else return(sd(x, ...) / mean(x, ...))
+}
+
+pointw_cv = abs(apply(get.results(LHS_proper, FALSE), c(1, 2), cv))
+global_cv = abs(apply(get.results(LHS_proper, TRUE), 2, cv))
+quant = 0.99
+
+for (i in 1) {
+    m <- max(quantile(pointw_cv[, i], quant), 1.05 * global_cv)
+    mi <- min(pointw_cv[, i], global_cv)
+    Ecdf(pointw_cv[, i], xlim = c(mi, m), xlab = "pointwise cv")
+    abline(v = global_cv[i], lwd = 2, lty = 3)
+    if (m > 0.8 * max(pointw_cv[, i])) {pos = 2}
+    else {pos = 4}
+    text(x = global_cv[i], y = 0.1, label = "global cv", pos = pos
+    )
+}
 ```
+
+```{r}
+point_cv = as.data.frame(pointw_cv)
+colnames(point_cv) = as.character(unique(all_lms$molecule))
+point_cv_melt = reshape2::melt(point_cv)
+colnames(point_cv_melt) = c("molecule", "point_cv")
+point_cv_melt$molecule = factor(point_cv_melt$molecule, levels = colnames(point_cv))
+global_cv_melt = data.frame(molecule = colnames(point_cv), global_cv = global_cv)
+global_cv_melt$molecule = factor(global_cv_melt$molecule, levels = colnames(point_cv))
+rownames(global_cv_melt) = NULL
+
+point_cv_melt
+global_cv_melt
+```
+
+
+```{r}
+cols = rcartocolor::carto_pal(8, "Safe")
+cv_cols = ggplot(point_cv_melt, aes(point_cv, color = factor(molecule))) +
+    stat_ecdf(geom = "line", size = 1.25) +
+    geom_vline(aes(xintercept = global_cv), global_cv_melt, lty = 2) +
+    geom_text(aes(x = 0.9*global_cv, y = 0.5, label = "global cv"), data = global_cv_melt,
+              text = element_text(size = 11, hjust = (0.5)), 
+              color = "black", angle = 90) +
+    facet_wrap(~molecule, ncol = 4, scales = "free_x") +
+    scale_colour_manual(values = cols) +
+    theme_cowplot() +
+    guides(color = guide_none()) +
+    labs(y = "Proportion <= x / [no unit]", x = "Pointwise CV") 
+```
+
+```{r}
+ggsave("LHS_proper/cv_cols.png", cv_cols, 
+       dpi = 100, units = "px", 
+       width = 1000, height = 600)
+```
+
+```{r}
+# both ecdf and pointwise cv
+library("cowplot")
+png("LHS_proper/ecdf_cv_col.png", res = 130, width = 1200, height = 1200)
+plot_grid(ecdfs_cols, cv_cols, nrow = 2, ncol = 1, labels = "auto")
+dev.off()
+```
+
 
 
 ```{r}
